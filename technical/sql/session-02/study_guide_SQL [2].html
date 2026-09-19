@@ -1,0 +1,891 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session · SQL Advanced · JOINs & Aggregates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #050810;
+    --bg-soft: #0a0f1e;
+    --panel: #0e1526;
+    --line: #1d2c48;
+    --ink: #daffff;
+    --ink-dim: #7b93b8;
+    --cyan: #00f2ea;
+    --cyan-dim: #00a89f;
+    --magenta: #ff2ecf;
+    --magenta-dim: #b81ea0;
+    --amber: #ffd23f;
+    --amber-dim: #c9a020;
+    --green: #39ff88;
+    --coral: #ff4d6d;
+    --code-bg: #030509;
+    --radius: 16px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      repeating-linear-gradient(0deg, rgba(0,242,234,.035) 0 1px, transparent 1px 44px),
+      repeating-linear-gradient(90deg, rgba(255,46,207,.03) 0 1px, transparent 1px 44px),
+      radial-gradient(1200px 560px at 88% -8%, rgba(0,242,234,.10), transparent 60%),
+      radial-gradient(900px 500px at -5% 15%, rgba(255,46,207,.09), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Cairo',sans-serif;
+    line-height:1.75;
+  }
+  code, .mono{font-family:'JetBrains Mono',monospace;}
+  ::selection{background:rgba(0,242,234,.28); color:#fff;}
+
+  #pageProgress{
+    position:fixed; top:0; left:0; height:3px; width:0%;
+    background:linear-gradient(90deg, var(--cyan), var(--magenta));
+    box-shadow:0 0 10px rgba(0,242,234,.7);
+    z-index:999; transition:width .1s linear;
+  }
+
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg-soft);}
+  ::-webkit-scrollbar-thumb{background:linear-gradient(var(--cyan-dim), var(--magenta-dim)); border-radius:10px;}
+
+  .shell{display:grid; grid-template-columns: 270px 1fr; min-height:100vh;}
+  @media (max-width: 880px){ .shell{grid-template-columns: 1fr;} .side{position:static; height:auto;} }
+
+  .side{
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    background:linear-gradient(180deg, var(--bg-soft), var(--bg));
+    padding:28px 18px; position:relative;
+  }
+  .side::after{
+    content:""; position:absolute; top:0; bottom:0; left:0; width:3px;
+    background:linear-gradient(180deg, var(--cyan), var(--magenta) 55%, var(--amber));
+    box-shadow:0 0 16px rgba(0,242,234,.5), 0 0 26px rgba(255,46,207,.3);
+  }
+  @media (max-width: 880px){ .side::after{display:none;} }
+
+  .brand{display:flex; align-items:center; gap:11px; margin-bottom:8px; padding:0 6px;}
+  .brand .dot{
+    width:13px;height:13px;border-radius:4px;
+    background:linear-gradient(135deg, var(--cyan), var(--magenta));
+    box-shadow:0 0 16px rgba(0,242,234,.65);
+    animation:pulse 2.2s ease-in-out infinite;
+  }
+  @keyframes pulse{0%,100%{opacity:1;} 50%{opacity:.45;}}
+  .brand b{font-size:15.5px; letter-spacing:.3px;}
+  .brand span{display:block; font-size:11px; color:var(--ink-dim);}
+
+  .conn-badge{
+    display:inline-flex; align-items:center; gap:6px; margin:8px 6px 0;
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--green);
+    border:1px solid rgba(57,255,136,.35); background:rgba(57,255,136,.07);
+    padding:4px 9px; border-radius:20px;
+  }
+  .conn-badge i{width:6px;height:6px;border-radius:50%;background:var(--green); box-shadow:0 0 6px var(--green); animation:pulse 1.6s ease-in-out infinite;}
+
+  .supervisor{
+    margin:12px 6px 14px; padding:11px 13px;
+    border:1px solid rgba(0,242,234,.28); border-radius:12px;
+    background:linear-gradient(135deg, rgba(0,242,234,.09), rgba(255,46,207,.06));
+    font-size:11.5px; color:var(--ink-dim); line-height:1.6;
+  }
+  .supervisor b{color:var(--cyan); display:block; font-size:12.5px; margin-bottom:2px; font-weight:800;}
+
+  .side-progress{margin:0 6px 20px; padding:12px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel);}
+  .side-progress .lbl{display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink-dim); margin-bottom:8px; font-family:'JetBrains Mono',monospace;}
+  .side-progress .lbl b{color:var(--cyan); font-weight:700;}
+  .track{height:7px; border-radius:20px; background:var(--code-bg); overflow:hidden; border:1px solid var(--line);}
+  .fill{height:100%; width:0%; border-radius:20px; background:linear-gradient(90deg, var(--cyan), var(--magenta)); transition:width .35s ease; box-shadow:0 0 8px rgba(0,242,234,.6);}
+
+  nav .navlink{
+    display:flex; align-items:center; gap:10px; width:100%;
+    padding:9.5px 11px; border-radius:10px; color:var(--ink-dim);
+    text-decoration:none; font-size:13.5px; margin-bottom:2px;
+    border:1px solid transparent; transition:.2s ease;
+    position:relative; background:none; font-family:'Cairo',sans-serif;
+    cursor:pointer; text-align:right;
+  }
+  nav .navlink .n{
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--magenta);
+    width:22px; text-align:center;
+  }
+  nav .navlink:hover{background:var(--panel); color:var(--ink); transform:translateX(-2px);}
+  nav .navlink.active{
+    background:linear-gradient(90deg, rgba(0,242,234,.14), rgba(255,46,207,.08));
+    border-color:rgba(0,242,234,.35); color:var(--cyan);
+    box-shadow: inset 0 0 12px rgba(0,242,234,.08);
+  }
+  nav .navlink.active .n{color:var(--cyan);}
+  nav .navlink .check{margin-right:auto; font-size:12px; color:var(--green); opacity:0; transition:.2s;}
+  nav .navlink.done .check{opacity:1; text-shadow:0 0 6px var(--green);}
+  .nav-quiz{margin-top:16px; padding-top:16px; border-top:1px dashed var(--line);}
+
+  main{padding:46px clamp(20px,4vw,68px) 90px;}
+  .hero{
+    background:linear-gradient(155deg, var(--panel), var(--bg-soft) 70%);
+    border:1px solid var(--line); border-radius:22px;
+    padding:38px clamp(22px,4vw,48px); margin-bottom:42px; position:relative; overflow:hidden;
+    box-shadow:0 30px 60px -30px rgba(0,0,0,.7), 0 0 60px -30px rgba(0,242,234,.25);
+  }
+  .hero::before{
+    content:""; position:absolute; inset:0; border-radius:22px; padding:1px;
+    background:linear-gradient(120deg, rgba(0,242,234,.55), transparent 30%, transparent 70%, rgba(255,46,207,.55));
+    -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+  }
+  .hero::after{
+    content:"SELECT * FROM company;"; position:absolute; left:-14px; bottom:-16px;
+    font-family:'JetBrains Mono',monospace; font-size:36px; color:rgba(0,242,234,.06);
+    letter-spacing:1px; pointer-events:none;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:1.5px;
+    background:linear-gradient(90deg, var(--cyan), var(--magenta));
+    -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:700;
+  }
+  .hero h1{font-size:clamp(26px,4vw,38px); margin:11px 0 9px; font-weight:900;}
+  .hero .cursor{display:inline-block; width:10px; background:var(--cyan); margin-right:3px; animation:blink 1s step-end infinite;}
+  @keyframes blink{50%{opacity:0;}}
+  .hero p{color:var(--ink-dim); max-width:680px; margin:0; font-size:15px;}
+  .hero-tags{display:flex; flex-wrap:wrap; gap:9px; margin-top:22px;}
+  .tag{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-dim);
+    border:1px solid var(--line); padding:6px 12px; border-radius:20px; background:var(--code-bg);
+    transition:.2s;
+  }
+  .tag:hover{border-color:rgba(0,242,234,.4); color:var(--cyan); box-shadow:0 0 10px rgba(0,242,234,.2);}
+
+  .hero-progress{margin-top:24px; display:flex; align-items:center; gap:14px;}
+  .hero-progress .track{flex:1; height:9px;}
+  .hero-progress span{font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--cyan); white-space:nowrap;}
+
+  section.topic{
+    border-top:1px solid var(--line); padding-top:36px; margin-top:36px; scroll-margin-top:24px;
+    opacity:0; transform:translateY(14px); transition:opacity .55s ease, transform .55s ease;
+  }
+  section.topic.revealed{opacity:1; transform:translateY(0);}
+  section.topic .kicker{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
+  section.topic .kicker .idx{
+    font-family:'JetBrains Mono',monospace; color:var(--cyan); font-size:13px;
+    border:1px solid var(--cyan-dim); border-radius:9px; padding:2px 10px;
+    background:rgba(0,242,234,.06); box-shadow:0 0 10px rgba(0,242,234,.15);
+  }
+  section.topic h2{font-size:23.5px; margin:7px 0 12px; font-weight:800;}
+  section.topic .lead{color:var(--ink-dim); max-width:780px; margin-bottom:19px; font-size:15px;}
+
+  .grid2{display:grid; grid-template-columns: 1.1fr .9fr; gap:18px; align-items:start;}
+  @media (max-width:760px){.grid2{grid-template-columns:1fr;}}
+
+  .code-card{
+    background:var(--code-bg); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden; transition:.25s ease; position:relative;
+  }
+  .code-card:hover{border-color:rgba(255,46,207,.45); box-shadow:0 14px 34px -18px rgba(255,46,207,.35);}
+  .code-card .bar{
+    display:flex; align-items:center; gap:7px; padding:10px 14px; border-bottom:1px solid var(--line);
+    background:#08101f;
+  }
+  .code-card .bar i{width:9px;height:9px;border-radius:50%;background:#233254;}
+  .code-card .bar span{margin-right:auto; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim);}
+  .copy-btn{
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 9px; border-radius:7px;
+    cursor:pointer; transition:.2s;
+  }
+  .copy-btn:hover{border-color:var(--cyan); color:var(--cyan);}
+  .copy-btn.copied{border-color:var(--green); color:var(--green);}
+  .code-card pre{
+    margin:0; padding:17px; direction:ltr; text-align:left; overflow-x:auto;
+    font-family:'JetBrains Mono',monospace; font-size:13px; color:#e4fbff; line-height:1.68;
+  }
+  .code-card pre .c{color:#4c6280;}
+  .code-card pre .k{color:var(--magenta);}
+  .code-card pre .s{color:var(--amber);}
+  .code-card pre .f{color:var(--cyan);}
+
+  .out-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;
+    transition:.25s ease;
+  }
+  .out-card:hover{border-color:rgba(0,242,234,.35);}
+  .out-card .bar{padding:10px 14px; border-bottom:1px solid var(--line); font-size:11.5px; color:var(--cyan); font-family:'JetBrains Mono',monospace;}
+  .out-card pre{margin:0; padding:17px; direction:ltr; text-align:left; font-family:'JetBrains Mono',monospace; font-size:12.6px; color:#cdeaff; white-space:pre-wrap; word-break:break-word;}
+
+  .note{
+    margin-top:15px; padding:13px 17px; border-radius:11px;
+    background:rgba(255,210,63,.07); border:1px solid rgba(255,210,63,.28);
+    font-size:13.5px; color:#ffe8a3;
+  }
+  .note b{color:var(--amber);}
+  .try{
+    margin-top:15px; padding:15px 17px; border-radius:11px;
+    background:rgba(0,242,234,.07); border:1px dashed rgba(0,242,234,.4);
+    font-size:14px;
+  }
+  .try b{color:var(--cyan);}
+
+  table.mini{width:100%; border-collapse:collapse; margin-top:14px; font-size:13.5px;}
+  table.mini th, table.mini td{border:1px solid var(--line); padding:9px 12px; text-align:right; font-family:'Cairo',sans-serif;}
+  table.mini th{background:var(--panel); color:var(--cyan); font-size:13px; font-weight:700;}
+  table.mini td{color:var(--ink-dim); font-size:13.5px;}
+  table.mini code{
+    font-family:'JetBrains Mono',monospace; direction:ltr; unicode-bidi:embed; display:inline-block;
+    color:var(--cyan); background:var(--code-bg); border:1px solid var(--line);
+    padding:2px 7px; border-radius:6px; font-size:12px;
+  }
+  .ltr{direction:ltr; unicode-bidi:embed; display:inline-block; font-family:'JetBrains Mono',monospace;}
+  .ltr-plain{direction:ltr; unicode-bidi:embed; display:inline-block; font-family:'Cairo',sans-serif;}
+  .hero-credit{margin:10px 0 0; font-size:12.5px; color:var(--ink-dim); font-family:'JetBrains Mono',monospace; direction:ltr; unicode-bidi:embed; text-align:right;}
+
+  .mark-row{display:flex; justify-content:flex-end; margin-top:18px;}
+  .mark-btn{
+    background:var(--code-bg); border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'Cairo',sans-serif; font-size:13px; font-weight:700; padding:9px 16px;
+    border-radius:10px; cursor:pointer; transition:.2s; display:flex; align-items:center; gap:7px;
+  }
+  .mark-btn:hover{border-color:var(--cyan-dim); color:var(--ink);}
+  .mark-btn.done{border-color:var(--green); color:var(--green); background:rgba(57,255,136,.07); box-shadow:0 0 10px rgba(57,255,136,.15);}
+
+  #quiz{border-top:1px solid var(--line); padding-top:36px; margin-top:52px;}
+  .qcard{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:21px 23px; margin-bottom:16px; transition:.2s;
+  }
+  .qcard:hover{border-color:rgba(0,242,234,.25);}
+  .qcard .qtext{font-weight:700; margin-bottom:14px; font-size:15.5px;}
+  .qcard .opts{display:grid; gap:9px;}
+  .opt{
+    display:block; width:100%; text-align:right; cursor:pointer;
+    background:var(--code-bg); border:1px solid var(--line); color:var(--ink);
+    padding:11px 15px; border-radius:10px; font-family:'Cairo',sans-serif; font-size:14px;
+    transition:.15s;
+  }
+  .opt:hover{border-color:var(--cyan-dim);}
+  .opt.correct{border-color:var(--green); background:rgba(57,255,136,.13); color:var(--green);}
+  .opt.wrong{border-color:var(--coral); background:rgba(255,77,109,.12); color:var(--coral);}
+  .opt[disabled]{cursor:default;}
+  .explain{display:none; margin-top:12px; font-size:13.5px; color:var(--ink-dim); border-top:1px dashed var(--line); padding-top:10px;}
+
+  .quiz-summary{
+    background:linear-gradient(155deg, var(--panel), var(--bg-soft));
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:23px; text-align:center; margin-bottom:20px;
+  }
+  .quiz-summary .score{
+    font-family:'JetBrains Mono',monospace; font-size:36px; font-weight:700;
+    background:linear-gradient(90deg, var(--cyan), var(--magenta));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .reset-btn{
+    margin-top:11px; background:linear-gradient(90deg, var(--cyan), #8afff8); color:#032420; border:none; font-weight:700;
+    padding:10px 22px; border-radius:10px; cursor:pointer; font-family:'Cairo',sans-serif; font-size:14px;
+    transition:.2s;
+  }
+  .reset-btn:hover{transform:translateY(-1px); box-shadow:0 10px 22px -10px rgba(0,242,234,.6);}
+
+  #toTop{
+    position:fixed; bottom:22px; left:22px; width:42px; height:42px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--line); color:var(--cyan); font-size:18px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    opacity:0; pointer-events:none; transition:.25s; z-index:998;
+  }
+  #toTop.show{opacity:1; pointer-events:auto; box-shadow:0 0 14px rgba(0,242,234,.35);}
+  #toTop:hover{border-color:var(--cyan);}
+
+  footer{text-align:center; color:var(--ink-dim); font-size:12.5px; padding:34px 0 10px;}
+  footer .sup{display:block; margin-top:6px; color:var(--cyan-dim); font-family:'JetBrains Mono',monospace; font-size:11.5px;}
+</style>
+</head>
+<body>
+<div id="pageProgress"></div>
+<div class="shell">
+
+  <aside class="side">
+    <div class="brand"><div class="dot"></div><div><b>SQL // Advanced</b><span>JOINs · Subqueries · Aggregates</span></div></div>
+    <div class="conn-badge"><i></i>connected: company_db</div>
+    <div class="supervisor"><b>Instructor</b>Eng. Ahmed Salem<br><b style="margin-top:6px;">Guide by</b>Mohamed Mahmoud Salama</div>
+    <div class="side-progress">
+      <div class="lbl"><span>تقدّمك في المذاكرة</span><b id="sideProgressText">0%</b></div>
+      <div class="track"><div class="fill" id="sideProgressFill"></div></div>
+    </div>
+    <nav id="topnav">
+      <button type="button" class="navlink" data-target="compare"><span class="n">01</span> Comparison + LIKE<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="logical"><span class="n">02</span> Logical Conditions<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="arithmetic"><span class="n">03</span> Arithmetic Expressions<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="orderby"><span class="n">04</span> ORDER BY<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="innerjoin"><span class="n">05</span> INNER JOIN<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="outerjoin"><span class="n">06</span> LEFT/RIGHT/FULL/CROSS<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="selfjoin"><span class="n">07</span> Self Join + Alias<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="subquery"><span class="n">08</span> Subqueries<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="union"><span class="n">09</span> UNION<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="aggregate"><span class="n">10</span> Aggregate Functions<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="groupby"><span class="n">11</span> GROUP BY + HAVING<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="extras"><span class="n">12</span> NULL / LIMIT / خارطة تفكير<span class="check">✓</span></button>
+      <div class="nav-quiz">
+        <button type="button" class="navlink" data-target="quiz">🧠 اختبر نفسك (كويز)</button>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="hero">
+      <div class="eyebrow">SESSION · SQL ADVANCED</div>
+      <h1>JOINs, Subqueries & Aggregate Functions<span class="cursor">&nbsp;</span></h1>
+      <p>مرجع مذاكرة تفاعلي على قاعدة بيانات <span class="ltr">COMPANY</span> الكلاسيكية (جداول <span class="ltr" style="direction:ltr;">employee · department · dept_locations · project · works_on</span>) — كل موضوع فيه شرح مبسط، كود SQL حقيقي من تمارين الجلسة، وناتج توضيحي جنبه.</p>
+      <p class="hero-credit">Course by Eng. Ahmed Salem · Study guide compiled by Mohamed Mahmoud Salama</p>
+      <div class="hero-tags">
+        <span class="tag">WHERE / LIKE</span><span class="tag">AND / OR / NOT</span><span class="tag">ORDER BY</span>
+        <span class="tag">INNER JOIN</span><span class="tag">LEFT / RIGHT / FULL</span><span class="tag">SELF JOIN</span>
+        <span class="tag">Subquery</span><span class="tag">UNION</span><span class="tag">COUNT/SUM/AVG</span><span class="tag">GROUP BY / HAVING</span>
+      </div>
+      <div class="hero-progress">
+        <div class="track"><div class="fill" id="heroProgressFill"></div></div>
+        <span id="heroProgressText">0 / 12 مواضيع خلّصتها</span>
+      </div>
+    </div>
+
+    <!-- 01 COMPARISON + LIKE -->
+    <section class="topic" id="compare">
+      <div class="kicker"><span class="idx">01</span></div>
+      <h2>Comparison Conditions + LIKE / ILIKE</h2>
+      <p class="lead">أدوات المقارنة الأساسية (<code>=، &lt;&gt;، &gt;، &lt;، BETWEEN، IN</code>) وأدوات البحث بالنمط (<code>LIKE / ILIKE</code>) — أساس أي شرط WHERE تقريبًا.</p>
+      <table class="mini">
+        <tr><th>الأداة</th><th>المعنى</th></tr>
+        <tr><td><code>=</code></td><td>يساوي بالظبط</td></tr>
+        <tr><td><code>&lt;&gt;</code> أو <code>!=</code></td><td>لا يساوي</td></tr>
+        <tr><td><code>BETWEEN a AND b</code></td><td>بين قيمتين (شامل الطرفين)</td></tr>
+        <tr><td><code>IN (list)</code></td><td>يطابق أي قيمة من لستة</td></tr>
+        <tr><td><code>%</code></td><td>أي عدد من الحروف (صفر أو أكتر)</td></tr>
+        <tr><td><code>_</code></td><td>حرف واحد بالظبط</td></tr>
+      </table>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>comparison.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">select</span> * <span class="k">from</span> employee <span class="k">where</span>  salary &gt; <span class="s">30000</span>;
+
+<span class="k">select</span> fname , lname , salary
+<span class="k">from</span> employee
+<span class="k">where</span> salary <span class="k">between</span> <span class="s">20000</span> <span class="k">and</span> <span class="s">25000</span>;
+
+<span class="k">select</span> fname , lname , salary , dno
+<span class="k">from</span> employee <span class="k">where</span> dno <span class="k">in</span> (<span class="s">10</span>,<span class="s">2</span>,<span class="s">4</span>);</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>like_ilike.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">select</span> fname , lname , salary <span class="k">from</span> employee
+<span class="k">where</span> fname <span class="k">ilike</span> <span class="s">'a%'</span>;   <span class="c">-- يبدأ بحرف a</span>
+
+<span class="k">select</span> fname , lname , salary <span class="k">from</span> employee
+<span class="k">where</span> fname <span class="k">ilike</span> <span class="s">'%d'</span>;   <span class="c">-- ينتهي بحرف d</span>
+
+<span class="k">select</span> fname , lname , salary <span class="k">from</span> employee
+<span class="k">where</span> fname <span class="k">ilike</span> <span class="s">'_a%'</span>;  <span class="c">-- الحرف الثاني a</span></pre>
+        </div>
+      </div>
+      <div class="note"><b>LIKE مقابل ILIKE:</b> في PostgreSQL، <code>LIKE</code> بتفرّق بين الحروف الكبيرة والصغيرة (case-sensitive)، أما <code>ILIKE</code> فبتتجاهل الفرق — يعني <code>'Ahmad'</code> و<code>'ahmad'</code> هيتطابقوا مع بعض معاها. غالبًا ILIKE أأمن للاستخدام في البحث النصي.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('compare', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 02 LOGICAL -->
+    <section class="topic" id="logical">
+      <div class="kicker"><span class="idx">02</span></div>
+      <h2>Logical Conditions — AND / OR / NOT</h2>
+      <p class="lead">بتخليك تجمع أكتر من شرط مع بعض. <code>AND</code> = لازم الشرطين صح، <code>OR</code> = يكفي شرط واحد صح، <code>NOT</code> = بتعكس الشرط.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>and_or.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">select</span> fname , lname , sex , salary <span class="k">from</span> employee
+<span class="k">where</span> salary &gt; <span class="s">30000</span> <span class="k">and</span> sex <span class="k">ilike</span> <span class="s">'M'</span>;
+
+<span class="k">select</span> fname , lname , salary <span class="k">from</span> employee
+<span class="k">where</span> salary &gt; <span class="s">50000</span> <span class="k">or</span> salary &lt; <span class="s">21000</span>;</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>parentheses.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c">-- ذكور راتبهم أكبر من 40000 أو إناث راتبهم أكبر من 40000</span>
+<span class="k">select</span> fname , lname , salary <span class="k">from</span> employee
+<span class="k">where</span> (salary &gt; <span class="s">40000</span> <span class="k">and</span> sex <span class="k">ilike</span> <span class="s">'m'</span>)
+   <span class="k">or</span> (salary &gt; <span class="s">40000</span> <span class="k">and</span> sex <span class="k">ilike</span> <span class="s">'f'</span>);</pre>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>not_condition.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">select</span> fname , lname , salary <span class="k">from</span> employee
+<span class="k">where</span> <span class="k">not</span> salary &gt; <span class="s">30000</span>;
+
+<span class="c">-- بيدّي نفس نتيجة:</span>
+<span class="k">select</span> fname , lname , salary <span class="k">from</span> employee
+<span class="k">where</span> salary &lt; <span class="s">30000</span>;</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ فكّر فيها كده</div><pre>NOT salary > 30000
+       ≡
+salary <= 30000
+
+(عكس ">" هو "<=" مش "<" بس!)</pre></div>
+      </div>
+      <div class="note"><b>خطر شائع:</b> لما تجمع AND و OR مع بعض في نفس الجملة، لازم تستخدم أقواس <code>()</code> توضّح ترتيب التنفيذ — زي المثال التاني، من غير الأقواس ممكن النتيجة تختلف تمامًا عن اللي قصدته.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('logical', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 03 ARITHMETIC -->
+    <section class="topic" id="arithmetic">
+      <div class="kicker"><span class="idx">03</span></div>
+      <h2>Arithmetic Expressions — أعمدة محسوبة</h2>
+      <p class="lead">تقدر تحسب قيمة جديدة جوه الـ SELECT نفسه من غير ما تغيّر البيانات الأصلية في الجدول — دايمًا اديها اسم بـ <code>AS</code> (alias).</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>new_column.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">select</span> fname , lname , salary ,
+       salary + <span class="s">1000</span> <span class="k">as</span> new_salary
+<span class="k">from</span> employee;</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>bonus_raise.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c">-- بونص 10%</span>
+<span class="k">select</span> fname , lname , salary ,
+       salary * <span class="s">.1</span> <span class="k">as</span> bonus <span class="k">from</span> employee;
+
+<span class="c">-- زيادة 15%</span>
+<span class="k">select</span> fname , lname , salary ,
+       salary * <span class="s">1.15</span> <span class="k">as</span> salary_after_raise
+<span class="k">from</span> employee;</pre>
+        </div>
+      </div>
+      <div class="note"><b>مهم:</b> العمليات الحسابية جوه SELECT بتحسب قيمة في <b>الناتج بس</b> — مش بتعدّل أي بيانات فعلية في الجدول. عايز تعدّل فعليًا؟ محتاج أمر <code>UPDATE</code> منفصل (زي ما اتعلمناه في الجلسة اللي فاتت).</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('arithmetic', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 04 ORDER BY -->
+    <section class="topic" id="orderby">
+      <div class="kicker"><span class="idx">04</span></div>
+      <h2>ORDER BY — ترتيب النتائج</h2>
+      <p class="lead"><code>ASC</code> تصاعدي (الافتراضي لو ماكتبتش حاجة)، <code>DESC</code> تنازلي. تقدر ترتب بأكتر من عمود مع بعض.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>order_basic.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">select</span> fname , lname , salary <span class="k">from</span> employee
+<span class="k">order by</span> salary <span class="k">desc</span>;   <span class="c">-- من الأعلى للأقل</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>order_multi.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c">-- رتب بالمرتب، ولو اتساوى رتب بالاسم</span>
+<span class="k">select</span> fname , lname , salary <span class="k">from</span> employee
+<span class="k">order by</span> salary <span class="k">desc</span> , fname <span class="k">asc</span>;</pre>
+        </div>
+      </div>
+      <div class="note"><b>لاحظ:</b> تقدر تستخدم alias اتعمل جوه SELECT مباشرة في ORDER BY، زي: <code>SELECT salary * 12 AS annual_salary ... ORDER BY annual_salary</code>. العمود التاني في ORDER BY بيتفعّل بس لو فيه تعادل في العمود الأول.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('orderby', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 05 INNER JOIN -->
+    <section class="topic" id="innerjoin">
+      <div class="kicker"><span class="idx">05</span></div>
+      <h2>INNER JOIN — ربط جدولين بشرط تطابق</h2>
+      <p class="lead">لما البيانات اللي محتاجها موزّعة على جدولين، لازم تربطهم. <code>INNER JOIN</code> بيرجّع بس الصفوف اللي فيها تطابق في الجدولين.</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>inner_join.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre><span class="k">select</span> fname , lname , dname
+<span class="k">from</span> employee <span class="k">inner join</span> department
+<span class="k">on</span> employee.dno = department.dnumber;</pre>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>join_with_alias.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">select</span> concat(e.fname , <span class="s">' '</span> , e.lname) <span class="k">as</span> name,
+       d.dname , e.salary
+<span class="k">from</span> employee e <span class="k">inner join</span> department d
+<span class="k">on</span> e.dno = d.dnumber
+<span class="k">where</span> d.dname <span class="k">ilike</span> <span class="s">'Administration'</span>;</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ العلاقة بينهم</div><pre>employee.dno
+     |
+     V
+department.dnumber
+
+(عمود في كل جدول بيشاور على التاني)</pre></div>
+      </div>
+      <div class="note"><b>Ambiguous Column Names:</b> لو الجدولين فيهم عمود بنفس الاسم (زي name أو id)، لازم تحدد اسم الجدول قبل العمود (<code>e.fname</code> بدل <code>fname</code> بس) — وإلا SQL مش هتعرف تقصد عمود مين. عمومًا يُفضّل دايمًا تسبق كل عمود باسم جدوله (أو alias بتاعه) لوضوح أكتر وأداء أحسن.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('innerjoin', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 06 OUTER JOINS -->
+    <section class="topic" id="outerjoin">
+      <div class="kicker"><span class="idx">06</span></div>
+      <h2>LEFT / RIGHT / FULL / CROSS JOIN</h2>
+      <p class="lead">INNER JOIN بيسيب أي صف مالوش تطابق. لو عايز تحتفظ بالصفوف اللي مالهاش تطابق كمان، محتاج نوع تاني من الـ JOIN.</p>
+      <table class="mini">
+        <tr><th>النوع</th><th>بيرجّع إيه</th></tr>
+        <tr><td><code>LEFT JOIN</code></td><td>كل صفوف الجدول الشمال، حتى لو مفيش تطابق في اليمين</td></tr>
+        <tr><td><code>RIGHT JOIN</code></td><td>كل صفوف الجدول اليمين، حتى لو مفيش تطابق في الشمال</td></tr>
+        <tr><td><code>FULL JOIN</code></td><td>كل صفوف الجدولين، سواء فيه تطابق أو لأ</td></tr>
+        <tr><td><code>CROSS JOIN</code></td><td>كل التوليفات الممكنة (لو 10 موظفين × 3 أقسام = 30 صف)</td></tr>
+      </table>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>left_join.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c">-- كل الموظفين، حتى لو مالوش قسم مسجّل</span>
+<span class="k">select</span> concat(e.fname,<span class="s">' '</span>,e.lname) <span class="k">as</span> name,
+       d.dname , e.salary
+<span class="k">from</span> employee e <span class="k">left join</span> department d
+<span class="k">on</span> e.dno = d.dnumber;</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ مثال حقيقي (RIGHT JOIN)</div><pre>Employee       | Dept_ID | Department
+Ahmed Ali      | 100     | IT
+Mohamed Samir  | 200     | Marketing
+Mona Selim     | 100     | IT
+(NULL)         | 300     | HR
+
+(قسم HR فاضل ظاهر رغم مفيهوش موظف)</pre></div>
+      </div>
+      <div class="note"><b>خطة تفكير سريعة:</b> "عايز كل الصفوف من الجدول ده حتى لو مالوش تطابق؟" → استخدم LEFT (لو هو الجدول الأول) أو RIGHT (لو هو التاني). "عايز كل الصفوف من الجدولين مع بعض؟" → FULL. "مش محتاج شرط تطابق أصلاً، عايز كل التوليفات؟" → CROSS.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('outerjoin', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 07 SELF JOIN -->
+    <section class="topic" id="selfjoin">
+      <div class="kicker"><span class="idx">07</span></div>
+      <h2>Self Join + Table Alias</h2>
+      <p class="lead">أحيانًا الجدول محتاج "يتربط بنفسه" — زي جدول موظفين فيه عمود <code>superssn</code> بيشاور على <code>ssn</code> لموظف تاني في <b>نفس الجدول</b> (المشرف بتاعه).</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>self_join.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">select</span> e.name <span class="k">as</span> employee_name,
+       s.name <span class="k">as</span> supervisor
+<span class="k">from</span> employees e , employees s
+<span class="k">where</span> e.supervisorID = s.ID;</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ بيانات حقيقية من المحاضرة</div><pre>ID   | Employee_name | SupervisorID
+1122 | Ahmed Ali      | 2233
+2233 | Kamel Mohamed  | 1234
+1234 | Hanaa Sobhy    | 2233
+3216 | Amr Omran      | NULL
+5124 | Edward Hanna   | 2233
+6699 | Mariam Adel    | 5124</pre></div>
+      </div>
+      <div class="note"><b>ليه لازم alias هنا بالتحديد؟</b> عمليًا انت بتستخدم نفس الجدول <code>employees</code> مرتين في نفس الاستعلام — من غير alias (زي <code>e</code> و<code>s</code>)، SQL مش هتعرف تفرّق بين "الموظف" و"المشرف" لإن الاسمين واحد. Amr Omran في المثال ليه <code>SupervisorID = NULL</code>، يعني هو مش تحت إشراف حد — ده هيتشال من نتيجة self join عادي (INNER)، محتاج LEFT JOIN لو عايزه يفضل ظاهر.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('selfjoin', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 08 SUBQUERY -->
+    <section class="topic" id="subquery">
+      <div class="kicker"><span class="idx">08</span></div>
+      <h2>Subqueries — استعلام جوه استعلام</h2>
+      <p class="lead">الـ Subquery هي SELECT كاملة جوه SELECT تانية. الاستعلام الداخلي بينفّذ الأول، وناتجه بيستخدمه الاستعلام الخارجي.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>subquery_max.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c">-- أعلى قسم مرتّب (استعلام جوه استعلام جوه استعلام)</span>
+<span class="k">select</span> dname
+<span class="k">from</span> dept
+<span class="k">where</span> deptno = (
+    <span class="k">select</span> deptno <span class="k">from</span> emp
+    <span class="k">where</span> sal = (<span class="k">select</span> <span class="f">max</span>(sal) <span class="k">from</span> emp)
+);</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>subquery_in.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c">-- موظفين شغالين في جيزة</span>
+<span class="k">select</span> name
+<span class="k">from</span> Employee
+<span class="k">where</span> Dno <span class="k">in</span> (
+    <span class="k">select</span> Dnumber <span class="k">from</span> dept
+    <span class="k">where</span> location = <span class="s">'giza'</span>
+);</pre>
+        </div>
+      </div>
+      <div class="note"><b>خطوتين في التفكير:</b> استعلام "أعلى راتب" مثلاً بيتحل على مرحلتين: (1) دوّر على أعلى قيمة (<code>MAX(sal)</code>)، (2) دوّر على مين صاحبها. الـ Subquery بتخليك تكتب المرحلتين في جملة واحدة بدل ما تنفّذهم يدويًا.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('subquery', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 09 UNION -->
+    <section class="topic" id="union">
+      <div class="kicker"><span class="idx">09</span></div>
+      <h2>UNION — دمج نتيجتين في واحدة</h2>
+      <p class="lead"><code>UNION</code> بتدمج ناتج جملتين SELECT في نتيجة واحدة — بشرط: نفس عدد الأعمدة، ونفس نوع البيانات تقريبًا.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>union_example.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">select</span> dnumber <span class="k">from</span> department
+<span class="k">where</span> MRGSSN = <span class="s">10</span>
+<span class="k">union</span>
+<span class="k">select</span> dnumber <span class="k">from</span> dept_locations
+<span class="k">where</span> dlocation = <span class="s">'GIZA'</span>;</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ UNION مقابل UNION ALL</div><pre>UNION
+  → بتشيل التكرار، كل قيمة تظهر مرة واحدة
+
+UNION ALL
+  → نفس الدمج، بس محتفظة بالتكرار
+  → أسرع لأنها مش بتقارن الصفوف ببعض</pre></div>
+      </div>
+      <div class="note"><b>مين بيسمّي الأعمدة في النتيجة النهائية؟</b> أسماء الأعمدة في النتيجة بتاخد اسمها من <b>أول</b> جملة SELECT بس، حتى لو الجملة التانية سمّت الأعمدة بشكل مختلف.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('union', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 10 AGGREGATE -->
+    <section class="topic" id="aggregate">
+      <div class="kicker"><span class="idx">10</span></div>
+      <h2>Aggregate Functions — دوال تجميعية</h2>
+      <p class="lead">بتاخد مجموعة صفوف وترجّع <b>نتيجة واحدة</b> بس — زي المجموع أو المتوسط أو العدد. أشهرها: <code>COUNT، SUM، AVG، MAX، MIN</code>.</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>aggregate_basic.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre><span class="k">select</span> <span class="f">count</span>(*) , <span class="f">max</span>(salary) , <span class="f">min</span>(salary),
+       <span class="f">sum</span>(salary) , <span class="f">avg</span>(salary)
+<span class="k">from</span> employee;</pre>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>count_with_join.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c">-- عدد موظفين قسم Research</span>
+<span class="k">select</span> <span class="f">count</span>(*)
+<span class="k">from</span> employee , department
+<span class="k">where</span> dno = dnumber <span class="k">and</span> dname = <span class="s">'Research'</span>;</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ خطر شائع</div><pre>الدوال التجميعية بتتجاهل قيم NULL
+تلقائيًا في حساباتها — من غير ما
+تحتاج تعمل أي فلترة إضافية بنفسك.</pre></div>
+      </div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('aggregate', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 11 GROUP BY + HAVING -->
+    <section class="topic" id="groupby">
+      <div class="kicker"><span class="idx">11</span></div>
+      <h2>GROUP BY + HAVING</h2>
+      <p class="lead">لو عايز نتيجة تجميعية <b>لكل مجموعة</b> بدل الجدول كله (زي متوسط راتب كل قسم لوحده)، استخدم <code>GROUP BY</code>. ولو عايز تفلتر المجموعات نفسها (مش الصفوف)، استخدم <code>HAVING</code>.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>group_by.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">select</span> dname , <span class="f">count</span>(*)
+<span class="k">from</span> employee e <span class="k">join</span> department d
+<span class="k">on</span> e.dno = d.dnumber
+<span class="k">group by</span> dname;</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>having.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c">-- أقسام أكتر من 2 موظف فيها</span>
+<span class="k">select</span> pnumber, pname, <span class="f">count</span>(works_on.pno)
+<span class="k">from</span> project , Works_on
+<span class="k">where</span> Pnumber = Pno
+<span class="k">group by</span> pnumber, pname
+<span class="k">having</span> <span class="f">count</span>(*) &gt; <span class="s">2</span>
+<span class="k">order by</span> Pnumber;</pre>
+        </div>
+      </div>
+      <table class="mini" style="margin-top:14px;">
+        <tr><th>الجزء</th><th>بيفلتر إيه</th><th>ترتيب التنفيذ</th></tr>
+        <tr><td><code>WHERE</code></td><td>صفوف مفردة، قبل التجميع</td><td>1</td></tr>
+        <tr><td><code>GROUP BY</code></td><td>بيكوّن المجموعات نفسها</td><td>2</td></tr>
+        <tr><td><code>HAVING</code></td><td>المجموعات، بعد ما اتكوّنت</td><td>3</td></tr>
+      </table>
+      <div class="note"><b>خطر شائع جدًا:</b> WHERE مش ممكن تستخدم فيها دالة تجميعية زي <code>COUNT()</code> أو <code>AVG()</code> مباشرة — لازم HAVING. القاعدة: لو الشرط بيتكلم عن "صف واحد"، استخدم WHERE. لو بيتكلم عن "المجموعة ككل" (زي عدد أعضائها أو متوسطها)، استخدم HAVING.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('groupby', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 12 EXTRAS -->
+    <section class="topic" id="extras">
+      <div class="kicker"><span class="idx">12</span></div>
+      <h2>NULL / LIMIT + خارطة التفكير السريعة</h2>
+      <p class="lead">آخر شوية أدوات مهمة، وخلاصة تساعدك تقرر تكتب إيه في أي استعلام من أول وهلة.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>null_check.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c">-- موظفين من غير مشرف</span>
+<span class="k">select</span> fname, lname, superssn
+<span class="k">from</span> employee
+<span class="k">where</span> superssn <span class="k">is null</span>;
+
+<span class="c">-- موظفين ليهم مشرف</span>
+<span class="k">select</span> fname, lname, superssn
+<span class="k">from</span> employee
+<span class="k">where</span> superssn <span class="k">is not null</span>;</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>limit.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c">-- أعلى 5 رواتب</span>
+<span class="k">select</span> fname, lname, salary
+<span class="k">from</span> employee
+<span class="k">order by</span> salary <span class="k">desc</span>
+<span class="k">limit</span> <span class="s">5</span>;</pre>
+        </div>
+      </div>
+      <div class="note"><b>NULL مش زي أي حاجة تانية:</b> NULL معناها "مش معروف/مش موجود"، مش صفر ولا نص فاضي ولا false. أبدًا متكتبش <code>column = NULL</code> — ده مش هيشتغل أصلاً. لازم <code>IS NULL</code> أو <code>IS NOT NULL</code>.</div>
+      <table class="mini" style="margin-top:14px;">
+        <tr><th>بتفكر في إيه؟</th><th>استخدم</th></tr>
+        <tr><td>عايز أعمدة معينة</td><td><code>SELECT</code></td></tr>
+        <tr><td>البيانات موزّعة على أكتر من جدول</td><td><code>JOIN</code></td></tr>
+        <tr><td>عايز تفلتر صفوف مفردة</td><td><code>WHERE</code></td></tr>
+        <tr><td>عايز تحسب حاجة (مجموع، متوسط...)</td><td><code>Aggregate Function</code></td></tr>
+        <tr><td>عايز نتيجة لكل مجموعة</td><td><code>GROUP BY</code></td></tr>
+        <tr><td>عايز تفلتر المجموعات نفسها</td><td><code>HAVING</code></td></tr>
+        <tr><td>محتاج نفس الجدول مرتين</td><td><code>SELF JOIN + ALIAS</code></td></tr>
+        <tr><td>عايز تدمج نتيجتين SELECT</td><td><code>UNION</code></td></tr>
+        <tr><td>عايز عدد محدود بس من الصفوف</td><td><code>LIMIT</code></td></tr>
+      </table>
+      <div class="try"><b>نصيحة للمذاكرة:</b> اتمرن على أسئلة الجلسة بنفسك على PostgreSQL/pgAdmin قبل ما تشوف أي حل — فكّر في كل سؤال بالخطوات دي بالترتيب (SELECT → JOIN؟ → WHERE؟ → GROUP BY؟ → HAVING؟ → ORDER BY؟) وهتلاقي أغلب الأسئلة بتتحل لوحدها.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('extras', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- QUIZ -->
+    <section id="quiz">
+      <div class="kicker"><span class="idx">🧠</span></div>
+      <h2>اختبر نفسك</h2>
+      <p class="lead">10 أسئلة على كل الجلسة — اختار إجابة وهيبان لك صح ولا غلط مع شرح سريع.</p>
+
+      <div class="quiz-summary">
+        <div>النتيجة</div>
+        <div class="score"><span id="scoreVal">0</span> / <span id="scoreTotal">10</span></div>
+        <button class="reset-btn" onclick="resetQuiz()">إعادة المحاولة</button>
+      </div>
+
+      <div id="quizList"></div>
+    </section>
+
+    <footer>SQL Advanced Session · JOINs, Subqueries &amp; Aggregates — مرجع مذاكرة للطلاب<span class="sup">Course by Eng. Ahmed Salem · Guide by Mohamed Mahmoud Salama</span></footer>
+  </main>
+</div>
+
+<button id="toTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="ارجع لفوق">↑</button>
+
+<script>
+document.querySelectorAll('.navlink[data-target]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const target = document.getElementById(btn.dataset.target);
+    if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+});
+
+const links = document.querySelectorAll('#topnav .navlink[data-target]');
+const sections = [...document.querySelectorAll('section.topic, #quiz')];
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('revealed');
+      links.forEach(l=>l.classList.remove('active'));
+      const match = document.querySelector(`#topnav .navlink[data-target="${e.target.id}"]`);
+      if(match) match.classList.add('active');
+    }
+  });
+},{rootMargin:'-20% 0px -65% 0px'});
+sections.forEach(s=>io.observe(s));
+
+const TOPIC_IDS = ['compare','logical','arithmetic','orderby','innerjoin','outerjoin','selfjoin','subquery','union','aggregate','groupby','extras'];
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  const pct = (h.scrollTop) / (h.scrollHeight - h.clientHeight) * 100;
+  document.getElementById('pageProgress').style.width = pct + '%';
+  document.getElementById('toTop').classList.toggle('show', h.scrollTop > 600);
+});
+
+function copyCode(btn){
+  const pre = btn.closest('.code-card').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    const old = btn.textContent;
+    btn.textContent = 'اتنسخ ✓';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent = old; btn.classList.remove('copied'); }, 1400);
+  }).catch(()=>{
+    btn.textContent = 'مش هيتنسخ 😕';
+    setTimeout(()=>{ btn.textContent = 'نسخ'; }, 1400);
+  });
+}
+
+const doneSet = new Set();
+function updateProgressUI(){
+  const pct = Math.round((doneSet.size / TOPIC_IDS.length) * 100);
+  document.getElementById('sideProgressFill').style.width = pct + '%';
+  document.getElementById('sideProgressText').textContent = pct + '%';
+  document.getElementById('heroProgressFill').style.width = pct + '%';
+  document.getElementById('heroProgressText').textContent = `${doneSet.size} / ${TOPIC_IDS.length} مواضيع خلّصتها`;
+  TOPIC_IDS.forEach(id=>{
+    const navLink = document.querySelector(`#topnav .navlink[data-target="${id}"]`);
+    if(navLink) navLink.classList.toggle('done', doneSet.has(id));
+  });
+}
+function toggleDone(id, btn){
+  if(doneSet.has(id)){
+    doneSet.delete(id);
+    btn.classList.remove('done');
+    btn.textContent = '✓ علّمت الموضوع ده كمذاكَر';
+  } else {
+    doneSet.add(id);
+    btn.classList.add('done');
+    btn.textContent = '✓ مذاكَر — كليك تاني للإلغاء';
+  }
+  updateProgressUI();
+}
+updateProgressUI();
+
+const QUESTIONS = [
+  {q:"select * from employee where fname ilike 'a%'; هترجّع إيه؟", opts:["أسماء منتهية بحرف a", "أسماء بادئة بحرف a (بغض النظر عن حالة الحرف)", "أسماء طولها حرف واحد بس", "كل الموظفين من غير فلترة"], a:1, ex:"% معناها أي عدد من الحروف بعدها، وILIKE بتتجاهل الفرق بين الحروف الكبيرة والصغيرة — فبتطابق a أو A في الأول."},
+  {q:"إيه الفرق بين WHERE و HAVING؟", opts:["مفيش فرق خالص", "WHERE بتفلتر صفوف مفردة قبل التجميع، HAVING بتفلتر المجموعات بعد GROUP BY", "HAVING بس اللي ينفع يشتغل مع JOIN", "WHERE بس للأرقام، HAVING بس للنصوص"], a:1, ex:"WHERE بتشتغل على مستوى الصف قبل ما يتعمل أي تجميع، وHAVING بتشتغل على المجموعات نفسها بعد GROUP BY — وهي الوحيدة اللي تقدر تستخدم فيها دوال تجميعية زي COUNT()."},
+  {q:"في self join على جدول employees فيه superssn، ليه محتاجين alias زي e و s؟", opts:["عشان الكود يبقى أقصر بس", "عشان نقدر نستخدم نفس الجدول مرتين ونفرّق بينهم في نفس الاستعلام", "alias إجباري في كل query", "عشان نغيّر اسم الجدول فعليًا"], a:1, ex:"من غير alias، SQL مش هتعرف تفرّق بين نسخة الجدول اللي بتمثّل الموظف ونسخته اللي بتمثّل المشرف، لإن الاسمين واحد (employees)."},
+  {q:"LEFT JOIN بترجّع إيه بالظبط؟", opts:["بس الصفوف اللي فيها تطابق في الجدولين", "كل صفوف الجدول الشمال، حتى لو مفيش تطابق في اليمين", "كل صفوف الجدول اليمين بس", "كل التوليفات الممكنة بين الجدولين"], a:1, ex:"LEFT JOIN بتحافظ على كل صفوف الجدول الأول (الشمال) حتى لو مالهاش تطابق في الجدول التاني — القيم المفقودة بتظهر NULL."},
+  {q:"في subquery زي: WHERE deptno = (SELECT deptno FROM emp WHERE sal = (SELECT MAX(sal) FROM emp)) — إيه اللي بينفّذ الأول؟", opts:["الاستعلام الخارجي كله", "الاستعلام الداخلي (الأعمق) SELECT MAX(sal)", "التلاتة بينفذوا في نفس الوقت", "ده syntax غلط أصلاً"], a:1, ex:"الاستعلامات الداخلية بتتنفّذ الأول من الأعمق للأسطح، وناتج كل واحد بيتستخدم في اللي بعده."},
+  {q:"عايز تجمع نتيجة جملتين SELECT في نتيجة واحدة، وتشيل أي تكرار — تستخدم إيه؟", opts:["JOIN", "UNION ALL", "UNION", "GROUP BY"], a:2, ex:"UNION بتدمج ناتج جملتين SELECT وبتشيل التكرار تلقائيًا. لو عايز تحتفظ بالتكرار، تستخدم UNION ALL بدلها."},
+  {q:"الدوال التجميعية (COUNT, SUM, AVG, MAX, MIN) بتتعامل إزاي مع قيم NULL؟", opts:["بتديلها قيمة صفر تلقائيًا", "بتتجاهلها تمامًا في الحساب", "بتديك error", "بتحسبها كـ 1"], a:1, ex:"الدوال التجميعية بتتجاهل NULL تلقائيًا من غير ما تحتاج تعمل أي فلترة إضافية بنفسك."},
+  {q:"CROSS JOIN بين 10 موظفين و3 أقسام هيرجّع كام صف؟", opts:["10 صفوف بس", "3 صفوف بس", "13 صف (10+3)", "30 صف (10×3) — كل التوليفات الممكنة"], a:3, ex:"CROSS JOIN بيعمل كل توليفة ممكنة بين صفوف الجدولين من غير أي شرط تطابق — يعني عدد صفوف الأول × عدد صفوف التاني."},
+  {q:"إزاي تتأكد إن عمود قيمته NULL في SQL؟", opts:["column = NULL", "column IS NULL", "column == NULL", "column.isnull()"], a:1, ex:"NULL مش قيمة عادية تقدر تقارنها بـ =، لازم تستخدم IS NULL أو IS NOT NULL تحديدًا."},
+  {q:"لو عايز أعلى 5 رواتب بس من نتيجة مرتّبة، تستخدم إيه؟", opts:["TOP 5", "LIMIT 5 بعد ORDER BY", "WHERE rank <= 5", "COUNT(5)"], a:1, ex:"في PostgreSQL، بترتّب النتيجة الأول بـ ORDER BY (تنازليًا للأعلى)، وبعدين تحدد عدد الصفوف بـ LIMIT."}
+];
+
+const list = document.getElementById('quizList');
+let answered = new Array(QUESTIONS.length).fill(false);
+let score = 0;
+
+function render(){
+  list.innerHTML = '';
+  QUESTIONS.forEach((item, qi)=>{
+    const card = document.createElement('div');
+    card.className = 'qcard';
+    card.innerHTML = `
+      <div class="qtext">${qi+1}. ${item.q}</div>
+      <div class="opts">
+        ${item.opts.map((o,oi)=>`<button class="opt" data-q="${qi}" data-o="${oi}">${o}</button>`).join('')}
+      </div>
+      <div class="explain" id="ex-${qi}">💡 ${item.ex}</div>
+    `;
+    list.appendChild(card);
+  });
+  document.querySelectorAll('.opt').forEach(btn=>{
+    btn.addEventListener('click', onAnswer);
+  });
+  document.getElementById('scoreTotal').textContent = QUESTIONS.length;
+}
+
+function onAnswer(e){
+  const qi = +e.target.dataset.q;
+  const oi = +e.target.dataset.o;
+  if(answered[qi]) return;
+  answered[qi] = true;
+  const item = QUESTIONS[qi];
+  const opts = document.querySelectorAll(`.opt[data-q="${qi}"]`);
+  opts.forEach(b=>b.disabled = true);
+  if(oi === item.a){
+    e.target.classList.add('correct');
+    score++;
+  } else {
+    e.target.classList.add('wrong');
+    opts[item.a].classList.add('correct');
+  }
+  document.getElementById(`ex-${qi}`).style.display = 'block';
+  document.getElementById('scoreVal').textContent = score;
+}
+
+function resetQuiz(){
+  answered = new Array(QUESTIONS.length).fill(false);
+  score = 0;
+  document.getElementById('scoreVal').textContent = 0;
+  render();
+}
+
+render();
+</script>
+</body>
+</html>

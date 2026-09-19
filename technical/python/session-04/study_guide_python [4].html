@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 4 · بايثون · الدوال والـ Functional Tools</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0f0b1a;
+    --bg-soft: #17112b;
+    --panel: #1c1533;
+    --line: #322a4d;
+    --ink: #f3eefc;
+    --ink-dim: #ab9fc9;
+    --gold: #e9c46a;
+    --gold-dim: #b3903f;
+    --violet: #a78bfa;
+    --violet-dim: #7c5cd6;
+    --coral: #f2789f;
+    --green: #7fd9a8;
+    --code-bg: #120d20;
+    --radius: 16px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 560px at 88% -8%, rgba(233,196,106,.10), transparent 60%),
+      radial-gradient(900px 500px at -5% 15%, rgba(167,139,250,.10), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Cairo',sans-serif;
+    line-height:1.75;
+  }
+  code, .mono{font-family:'JetBrains Mono',monospace;}
+  ::selection{background:rgba(233,196,106,.28); color:#fff;}
+
+  /* ===== scroll progress bar (page-wide) ===== */
+  #pageProgress{
+    position:fixed; top:0; left:0; height:3px; width:0%;
+    background:linear-gradient(90deg, var(--gold), var(--violet));
+    z-index:999; transition:width .1s linear;
+  }
+
+  /* ===== scrollbar bling ===== */
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg-soft);}
+  ::-webkit-scrollbar-thumb{background:linear-gradient(var(--violet-dim), var(--gold-dim)); border-radius:10px;}
+
+  /* ===== layout shell ===== */
+  .shell{display:grid; grid-template-columns: 270px 1fr; min-height:100vh;}
+  @media (max-width: 880px){ .shell{grid-template-columns: 1fr;} .side{position:static; height:auto;} }
+
+  .side{
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    background:linear-gradient(180deg, var(--bg-soft), var(--bg));
+    padding:28px 18px;
+  }
+  .side::after{
+    content:""; position:absolute; top:0; bottom:0; left:0; width:3px;
+    background:linear-gradient(180deg, var(--gold), var(--violet) 55%, var(--coral));
+    box-shadow:0 0 14px rgba(233,196,106,.35);
+  }
+  @media (max-width: 880px){ .side::after{display:none;} }
+  .brand{display:flex; align-items:center; gap:11px; margin-bottom:8px; padding:0 6px;}
+  .brand .dot{
+    width:13px;height:13px;border-radius:4px;
+    background:linear-gradient(135deg, var(--gold), var(--violet));
+    box-shadow:0 0 16px rgba(233,196,106,.55);
+  }
+  .brand b{font-size:15.5px; letter-spacing:.3px;}
+  .brand span{display:block; font-size:11px; color:var(--ink-dim);}
+
+  .supervisor{
+    margin:0 6px 14px; padding:11px 13px;
+    border:1px solid rgba(233,196,106,.28); border-radius:12px;
+    background:linear-gradient(135deg, rgba(233,196,106,.09), rgba(167,139,250,.06));
+    font-size:11.5px; color:var(--ink-dim); line-height:1.6;
+  }
+  .supervisor b{color:var(--gold); display:block; font-size:12.5px; margin-bottom:2px; font-weight:800;}
+
+  /* sidebar progress */
+  .side-progress{margin:0 6px 20px; padding:12px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel);}
+  .side-progress .lbl{display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink-dim); margin-bottom:8px; font-family:'JetBrains Mono',monospace;}
+  .side-progress .lbl b{color:var(--gold); font-weight:700;}
+  .track{height:7px; border-radius:20px; background:var(--code-bg); overflow:hidden; border:1px solid var(--line);}
+  .fill{height:100%; width:0%; border-radius:20px; background:linear-gradient(90deg, var(--gold), var(--violet)); transition:width .35s ease;}
+
+  nav .navlink{
+    display:flex; align-items:center; gap:10px; width:100%;
+    padding:9.5px 11px; border-radius:10px; color:var(--ink-dim);
+    text-decoration:none; font-size:14px; margin-bottom:2px;
+    border:1px solid transparent; transition:.2s ease;
+    position:relative; background:none; font-family:'Cairo',sans-serif;
+    cursor:pointer; text-align:right;
+  }
+  nav .navlink .n{
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--violet);
+    width:22px; text-align:center;
+  }
+  nav .navlink:hover{background:var(--panel); color:var(--ink); transform:translateX(-2px);}
+  nav .navlink.active{
+    background:linear-gradient(90deg, rgba(233,196,106,.14), rgba(167,139,250,.08));
+    border-color:rgba(233,196,106,.35); color:var(--gold);
+  }
+  nav .navlink.active .n{color:var(--gold);}
+  nav .navlink .check{margin-right:auto; font-size:12px; color:var(--green); opacity:0; transition:.2s;}
+  nav .navlink.done .check{opacity:1;}
+  .nav-quiz{margin-top:16px; padding-top:16px; border-top:1px dashed var(--line);}
+
+  /* ===== main ===== */
+  main{padding:46px clamp(20px,4vw,68px) 90px;}
+  .hero{
+    background:linear-gradient(155deg, var(--panel), var(--bg-soft) 70%);
+    border:1px solid var(--line); border-radius:22px;
+    padding:38px clamp(22px,4vw,48px); margin-bottom:42px; position:relative; overflow:hidden;
+    box-shadow:0 30px 60px -30px rgba(0,0,0,.6);
+  }
+  .hero::before{
+    content:""; position:absolute; inset:0; border-radius:22px; padding:1px;
+    background:linear-gradient(120deg, rgba(233,196,106,.5), transparent 30%, transparent 70%, rgba(167,139,250,.5));
+    -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+  }
+  .hero::after{
+    content:"def f(*args, **kwargs):"; position:absolute; left:-14px; bottom:-16px;
+    font-family:'JetBrains Mono',monospace; font-size:46px; color:rgba(233,196,106,.055);
+    letter-spacing:1px; pointer-events:none;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:1.5px;
+    background:linear-gradient(90deg, var(--gold), var(--violet));
+    -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:700;
+  }
+  .hero h1{font-size:clamp(27px,4vw,40px); margin:11px 0 9px; font-weight:900;}
+  .hero p{color:var(--ink-dim); max-width:640px; margin:0; font-size:15px;}
+  .hero-tags{display:flex; flex-wrap:wrap; gap:9px; margin-top:22px;}
+  .tag{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-dim);
+    border:1px solid var(--line); padding:6px 12px; border-radius:20px; background:var(--code-bg);
+    transition:.2s;
+  }
+  .tag:hover{border-color:rgba(233,196,106,.4); color:var(--gold);}
+
+  .hero-progress{margin-top:24px; display:flex; align-items:center; gap:14px;}
+  .hero-progress .track{flex:1; height:9px;}
+  .hero-progress span{font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--gold); white-space:nowrap;}
+
+  section.topic{
+    border-top:1px solid var(--line); padding-top:36px; margin-top:36px; scroll-margin-top:24px;
+    opacity:0; transform:translateY(14px); transition:opacity .55s ease, transform .55s ease;
+  }
+  section.topic.revealed{opacity:1; transform:translateY(0);}
+  section.topic .kicker{
+    display:flex; align-items:center; gap:12px; margin-bottom:6px;
+  }
+  section.topic .kicker .idx{
+    font-family:'JetBrains Mono',monospace; color:var(--gold); font-size:13px;
+    border:1px solid var(--gold-dim); border-radius:9px; padding:2px 10px;
+    background:rgba(233,196,106,.06);
+  }
+  section.topic h2{font-size:24.5px; margin:7px 0 12px; font-weight:800;}
+  section.topic .lead{color:var(--ink-dim); max-width:780px; margin-bottom:19px; font-size:15px;}
+
+  .grid2{display:grid; grid-template-columns: 1.1fr .9fr; gap:18px; align-items:start;}
+  @media (max-width:760px){.grid2{grid-template-columns:1fr;}}
+
+  .code-card{
+    background:var(--code-bg); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden; transition:.25s ease; position:relative;
+  }
+  .code-card:hover{border-color:rgba(167,139,250,.4); box-shadow:0 14px 34px -18px rgba(167,139,250,.35);}
+  .code-card .bar{
+    display:flex; align-items:center; gap:7px; padding:10px 14px; border-bottom:1px solid var(--line);
+    background:#160f28;
+  }
+  .code-card .bar i{width:9px;height:9px;border-radius:50%;background:#3d3560;}
+  .code-card .bar span{margin-right:auto; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim);}
+  .copy-btn{
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 9px; border-radius:7px;
+    cursor:pointer; transition:.2s;
+  }
+  .copy-btn:hover{border-color:var(--gold); color:var(--gold);}
+  .copy-btn.copied{border-color:var(--green); color:var(--green);}
+  .code-card pre{
+    margin:0; padding:17px; direction:ltr; text-align:left; overflow-x:auto;
+    font-family:'JetBrains Mono',monospace; font-size:13.2px; color:#e5ddf5; line-height:1.68;
+  }
+  .code-card pre .c{color:#7e739e;} /* comment */
+  .code-card pre .k{color:var(--coral);} /* keyword */
+  .code-card pre .s{color:var(--gold);} /* string/num */
+  .code-card pre .f{color:var(--violet);} /* func/builtin */
+
+  .out-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;
+    transition:.25s ease;
+  }
+  .out-card:hover{border-color:rgba(233,196,106,.35);}
+  .out-card .bar{padding:10px 14px; border-bottom:1px solid var(--line); font-size:11.5px; color:var(--gold); font-family:'JetBrains Mono',monospace;}
+  .out-card pre{margin:0; padding:17px; direction:ltr; text-align:left; font-family:'JetBrains Mono',monospace; font-size:13px; color:#d8cff0; white-space:pre-wrap;}
+
+  .note{
+    margin-top:15px; padding:13px 17px; border-radius:11px;
+    background:rgba(233,196,106,.08); border:1px solid rgba(233,196,106,.28);
+    font-size:13.5px; color:#f2dfab;
+  }
+  .note b{color:var(--gold);}
+  .try{
+    margin-top:15px; padding:15px 17px; border-radius:11px;
+    background:rgba(167,139,250,.08); border:1px dashed rgba(167,139,250,.4);
+    font-size:14px;
+  }
+  .try b{color:var(--violet);}
+
+  .mark-row{display:flex; justify-content:flex-end; margin-top:18px;}
+  .mark-btn{
+    background:var(--code-bg); border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'Cairo',sans-serif; font-size:13px; font-weight:700; padding:9px 16px;
+    border-radius:10px; cursor:pointer; transition:.2s; display:flex; align-items:center; gap:7px;
+  }
+  .mark-btn:hover{border-color:var(--violet-dim); color:var(--ink);}
+  .mark-btn.done{border-color:var(--green); color:var(--green); background:rgba(127,217,168,.08);}
+
+  /* ===== quiz ===== */
+  #quiz{border-top:1px solid var(--line); padding-top:36px; margin-top:52px;}
+  .qcard{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:21px 23px; margin-bottom:16px; transition:.2s;
+  }
+  .qcard:hover{border-color:rgba(233,196,106,.25);}
+  .qcard .qtext{font-weight:700; margin-bottom:14px; font-size:15.5px;}
+  .qcard .opts{display:grid; gap:9px;}
+  .opt{
+    display:block; width:100%; text-align:right; cursor:pointer;
+    background:var(--code-bg); border:1px solid var(--line); color:var(--ink);
+    padding:11px 15px; border-radius:10px; font-family:'Cairo',sans-serif; font-size:14px;
+    transition:.15s;
+  }
+  .opt:hover{border-color:var(--violet-dim);}
+  .opt.correct{border-color:var(--gold); background:rgba(233,196,106,.14); color:var(--gold);}
+  .opt.wrong{border-color:var(--coral); background:rgba(242,120,159,.12); color:var(--coral);}
+  .opt[disabled]{cursor:default;}
+  .explain{display:none; margin-top:12px; font-size:13.5px; color:var(--ink-dim); border-top:1px dashed var(--line); padding-top:10px;}
+
+  .quiz-summary{
+    background:linear-gradient(155deg, var(--panel), var(--bg-soft));
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:23px; text-align:center; margin-bottom:20px;
+  }
+  .quiz-summary .score{
+    font-family:'JetBrains Mono',monospace; font-size:36px; font-weight:700;
+    background:linear-gradient(90deg, var(--gold), var(--violet));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .reset-btn{
+    margin-top:11px; background:linear-gradient(90deg, var(--gold), #f0d78e); color:#1a1330; border:none; font-weight:700;
+    padding:10px 22px; border-radius:10px; cursor:pointer; font-family:'Cairo',sans-serif; font-size:14px;
+    transition:.2s;
+  }
+  .reset-btn:hover{transform:translateY(-1px); box-shadow:0 10px 22px -10px rgba(233,196,106,.5);}
+
+  /* ===== back-to-top ===== */
+  #toTop{
+    position:fixed; bottom:22px; left:22px; width:42px; height:42px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--line); color:var(--gold); font-size:18px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    opacity:0; pointer-events:none; transition:.25s; z-index:998;
+  }
+  #toTop.show{opacity:1; pointer-events:auto;}
+  #toTop:hover{border-color:var(--gold);}
+
+  footer{text-align:center; color:var(--ink-dim); font-size:12.5px; padding:34px 0 10px;}
+  footer .sup{display:block; margin-top:6px; color:var(--gold-dim); font-family:'JetBrains Mono',monospace; font-size:11.5px;}
+</style>
+</head>
+<body>
+<div id="pageProgress"></div>
+<div class="shell">
+
+  <aside class="side">
+    <div class="brand"><div class="dot"></div><div><b>Session 4</b><span>بايثون · الدوال وأدوات الـ Functional</span></div></div>
+    <div class="supervisor"><b>Instructor</b>Eng. Ahmed Salem<br><b style="margin-top:6px;">Guide by</b>Mohamed Mahmoud Salama</div>
+    <div class="side-progress">
+      <div class="lbl"><span>تقدّمك في المذاكرة</span><b id="sideProgressText">0%</b></div>
+      <div class="track"><div class="fill" id="sideProgressFill"></div></div>
+    </div>
+    <nav id="topnav">
+      <button type="button" class="navlink" data-target="operators"><span class="n">01</span> العمليات الحسابية<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="builtin"><span class="n">02</span> Built-in Functions<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="func-intro"><span class="n">03</span> بنية الدالة<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="func-none"><span class="n">04</span> دالة بدون مدخلات/Return<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="func-input"><span class="n">05</span> دالة بمدخلات فقط<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="func-return"><span class="n">06</span> دالة بمدخلات و Return<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="args"><span class="n">07</span> *args<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="kwargs"><span class="n">08</span> **kwargs<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="map"><span class="n">09</span> map()<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="filter"><span class="n">10</span> filter() و lambda<span class="check">✓</span></button>
+      <div class="nav-quiz">
+        <button type="button" class="navlink" data-target="quiz">🧠 اختبر نفسك (كويز)</button>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="hero">
+      <div class="eyebrow">SESSION 4 · PYTHON</div>
+      <h1>الدوال (Functions) وأدوات الـ Functional Programming</h1>
+      <p>مرجع مذاكرة تفاعلي مبني على أمثلة الجلسة نفسها — كل نقطة فيها شرح مبسط، الكود زي ما اتكتب في المحاضرة، والناتج المتوقع جنبه. Course by Eng. Ahmed Salem · Study guide compiled by Mohamed Mahmoud Salama.</p>
+      <div class="hero-tags">
+        <span class="tag">العمليات الحسابية</span><span class="tag">built-in functions</span><span class="tag">def</span>
+        <span class="tag">return</span><span class="tag">*args</span><span class="tag">**kwargs</span><span class="tag">map()</span><span class="tag">filter()</span><span class="tag">lambda</span>
+      </div>
+      <div class="hero-progress">
+        <div class="track"><div class="fill" id="heroProgressFill"></div></div>
+        <span id="heroProgressText">0 / 10 مواضيع خلّصتها</span>
+      </div>
+    </div>
+
+    <!-- 01 OPERATORS -->
+    <section class="topic" id="operators">
+      <div class="kicker"><span class="idx">01</span></div>
+      <h2>العمليات الحسابية الأساسية</h2>
+      <p class="lead">بايثون فيها كل العمليات الحسابية المعتادة، وبتتفرق شوية عن اللغات التانية في القسمة: <code>/</code> بترجع رقم عشري دايمًا، و <code>//</code> بترجع القسمة الصحيحة (Floor Division).</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>arithmetic.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>x = 15
+y = 3
+x + y    <span class="c"># جمع</span>
+x - y    <span class="c"># طرح</span>
+x * y    <span class="c"># ضرب</span>
+x / y    <span class="c"># قسمة عادية</span>
+x % y    <span class="c"># باقي القسمة</span>
+x ** y   <span class="c"># الأس (القوة)</span>
+x // y   <span class="c"># قسمة صحيحة</span></pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output (x=15, y=3)</div><pre>x + y  = 18
+x - y  = 12
+x * y  = 45
+x / y  = 5.0
+x % y  = 0
+x ** y = 3375
+x // y = 5</pre></div>
+      </div>
+      <div class="note"><b>لاحظ:</b> <code>/</code> نتيجتها دايمًا <code>float</code> حتى لو القسمة مظبوطة (<code>5.0</code>)، أما <code>//</code> فبتقرّب لتحت وتديك عدد صحيح.</div>
+      <div class="try"><b>جرب بنفسك:</b> نفس الكود بالظبط بيشتغل على أي رقمين — جرب <code>x=10, y=10</code> وبعدين <code>x=40, y=5</code> وشوف الفرق في القسمة والباقي.
+        <div class="grid2" style="margin-top:12px;">
+          <div class="out-card"><div class="bar">▸ x=10, y=10</div><pre>x + y  = 20
+x - y  = 0
+x * y  = 100
+x / y  = 1.0
+x % y  = 0
+x ** y = 10000000000
+x // y = 1</pre></div>
+          <div class="out-card"><div class="bar">▸ x=40, y=5</div><pre>x + y  = 45
+x - y  = 35
+x * y  = 200
+x / y  = 8.0
+x % y  = 0
+x ** y = 102400000000000000...
+x // y = 8</pre></div>
+        </div>
+      </div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('operators', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 02 BUILTIN -->
+    <section class="topic" id="builtin">
+      <div class="kicker"><span class="idx">02</span></div>
+      <h2>Built-in Functions — الدوال الجاهزة</h2>
+      <p class="lead">بايثون جايالك بدوال جاهزة تقدر تستخدمها على طول من غير ما تكتبها، زي <code>print()</code> و <code>type()</code> و <code>id()</code>.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>builtin_basic.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="f">print</span>(<span class="s">"s2"</span>)
+
+x = 10
+<span class="f">type</span>(x)     <span class="c"># نوع المتغير</span>
+<span class="f">id</span>(x)       <span class="c"># عنوان المتغير في الذاكرة</span></pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>s2
+&lt;class 'int'&gt;
+11645640   <span style="color:#7e739e"># عنوان مختلف كل مرة</span></pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>join_chars.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="s">""</span>.join([<span class="s">'a'</span>,<span class="s">'h'</span>,<span class="s">'m'</span>,<span class="s">'e'</span>,<span class="s">'d'</span>])
+<span class="c"># 'ahmed'</span></pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>'ahmed'</pre></div>
+      </div>
+      <div class="try"><b>جرب بنفسك:</b> استخدم <code>id()</code> على متغيرين ليهم نفس القيمة وشوف هل العنوان واحد ولا لأ.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('builtin', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 03 FUNC INTRO -->
+    <section class="topic" id="func-intro">
+      <div class="kicker"><span class="idx">03</span></div>
+      <h2>بنية الدالة (Pre-Defined Function)</h2>
+      <p class="lead">الدالة بتتبنى بـ <code>def</code>، وبتتلخص في 3 أشكال حسب لو فيها مدخلات (parameters) و/أو مخرجات (<code>return</code>) ولا لأ.</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>function_shapes.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre><span class="c"># شكل 1: من غير مدخلات ومن غير return</span>
+<span class="k">def</span> function_name():
+    statements....
+
+function_name()
+
+<span class="c"># شكل 2: بمدخلات وبـ return</span>
+<span class="k">def</span> function_name(param1, param2, ....):
+    statements....
+    <span class="k">return</span> value1, value2, ....
+
+function_name(arg1, arg2, ....)
+v1, v2, .... = function_name(arg1, arg2, ....)</pre>
+      </div>
+      <div class="note"><b>القاعدة:</b> أي دالة ممكن تاخد مدخلات أو لأ، وترجّع قيمة أو لأ — الأربع تركيبات كلها ممكنة، وهنشوفهم واحدة واحدة.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('func-intro', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 04 FUNC NO INPUT NO RETURN -->
+    <section class="topic" id="func-none">
+      <div class="kicker"><span class="idx">04</span></div>
+      <h2>من غير مدخلات ومن غير Return</h2>
+      <p class="lead">أبسط شكل للدالة: بتنفّذ أوامرها بس، ومش بترجّع أي قيمة. لو خزّنت ناتجها في متغير هتلاقيه <code>None</code>.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>say_hello_v1.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">def</span> say_hello():
+    <span class="f">print</span>(<span class="s">"Hello,.."</span>)
+
+x = say_hello()
+<span class="f">print</span>(x)</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>Hello,..
+None</pre></div>
+      </div>
+      <div class="note"><b>ليه None؟</b> الدالة مفيهاش <code>return</code>، فبايثون بترجّع <code>None</code> تلقائيًا لأي حد يحاول يخزّن ناتجها.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('func-none', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 05 FUNC INPUT NO RETURN -->
+    <section class="topic" id="func-input">
+      <div class="kicker"><span class="idx">05</span></div>
+      <h2>دالة بمدخلات، من غير Return</h2>
+      <p class="lead">تقدر تبعت القيم <b>بالترتيب (positional)</b> أو <b>بالاسم (keyword)</b>، وتقدر تدّي قيمة افتراضية (<code>default</code>) للمدخل لو مش هيتبعت.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>say_hello_v2.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">def</span> say_hello(name, age=<span class="s">0</span>):
+    <span class="f">print</span>(<span class="s">"Hello,"</span>, name, <span class="s">"Your age is"</span>, age)
+
+say_hello(<span class="s">"s2"</span>)
+say_hello(<span class="s">"Ahmed"</span>, <span class="s">30</span>)
+say_hello(name=<span class="s">"Ahmed"</span>, age=<span class="s">30</span>)</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>Hello, s2 Your age is 0
+Hello, Ahmed Your age is 30
+Hello, Ahmed Your age is 30</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>order_matters.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>say_hello(<span class="s">30</span>, <span class="s">"Ahmed"</span>)
+<span class="c"># positional: بترتيب المكان، مش المعنى</span></pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>Hello, 30 Your age is Ahmed</pre></div>
+      </div>
+      <div class="note"><b>خطر شائع:</b> لما تبعت القيم positional، الترتيب هو اللي بيحدد مين لمين — لو بدّلت الترتيب هتتبدل المعاني زي المثال اللي فوق. الحل: استخدم keyword arguments زي <code>age=30, name="Ahmed"</code> عشان الترتيب مايفرقش.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('func-input', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 06 FUNC INPUT AND RETURN -->
+    <section class="topic" id="func-return">
+      <div class="kicker"><span class="idx">06</span></div>
+      <h2>دالة بمدخلات و Return</h2>
+      <p class="lead">هنا الدالة بترجّع قيمة (أو أكتر) تقدر تخزّنها وتستخدمها بعد كده. الدالة لازم تتعرّف الأول قبل ما تُستدعى، وإلا هيطلع <code>NameError</code>.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>add.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">def</span> add(num1, num2):
+    s = num1 + num2
+    <span class="k">return</span> s
+
+res = add(<span class="s">10</span>, <span class="s">20</span>)
+<span class="f">print</span>(res)</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>30</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>even_odd_sum.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">def</span> even_odd_sum(lst):
+    even, odd = [], []
+    s_even, s_odd = <span class="s">0</span>, <span class="s">0</span>
+    <span class="k">for</span> i <span class="k">in</span> lst:
+        <span class="k">if</span> i % <span class="s">2</span> == <span class="s">0</span>:
+            even.append(i); s_even += i
+        <span class="k">else</span>:
+            odd.append(i); s_odd += i
+    <span class="k">return</span> even, s_even, odd, s_odd
+
+l = [<span class="s">1</span>,<span class="s">2</span>,<span class="s">3</span>,<span class="s">2</span>,<span class="s">3</span>,<span class="s">4</span>,<span class="s">3</span>,<span class="s">4</span>,<span class="s">5</span>,<span class="s">6</span>]
+even, s_even, odd, s_odd = even_odd_sum(l)</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>Even [2, 2, 4, 4, 6] Sum 18
+Odd  [1, 3, 3, 3, 5] Sum 15</pre></div>
+      </div>
+      <div class="note"><b>تقسيم المهام (تصغير الدالة):</b> بدل ما دالة واحدة تعمل كل حاجة، ممكن تفصل الجمع لوحده في دالة <code>get_sum(seq)</code> وتناديها جوه <code>even_odd_sum</code> — الكود بيبقى أنضف وأسهل في الصيانة.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('func-return', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 07 ARGS -->
+    <section class="topic" id="args">
+      <div class="kicker"><span class="idx">07</span></div>
+      <h2>*args — عدد غير محدد من المدخلات</h2>
+      <p class="lead">لو مش عارف قدّ إيه هيتبعتلك من قيم، استخدم <code>*args</code> — بتجمعهم كلهم في <b>tuple</b> واحد تقدر تلف عليه بـ <code>for</code>.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>star_args.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">def</span> add(*num):   <span class="c"># num >>> (val1, val2, ...)</span>
+    s = <span class="s">0</span>
+    <span class="k">for</span> i <span class="k">in</span> num:
+        s += i
+    <span class="k">return</span> s
+
+add()
+add(<span class="s">1</span>)
+add(<span class="s">1</span>,<span class="s">2</span>)
+add(<span class="s">1</span>,<span class="s">2</span>,<span class="s">3</span>)</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>add()      → 0
+add(1)     → 1
+add(1,2)   → 3
+add(1,2,3) → 6</pre></div>
+      </div>
+      <div class="note"><b>ليه مش بس list؟</b> قبل <code>*args</code> كنت مضطر تعمل دالة لكل عدد مدخلات (<code>add(a,b)</code>, <code>add(a,b,c)</code>...) — <code>*args</code> بتحل المشكلة دي بمرونة كاملة.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('args', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 08 KWARGS -->
+    <section class="topic" id="kwargs">
+      <div class="kicker"><span class="idx">08</span></div>
+      <h2>**kwargs — مدخلات على شكل قاموس</h2>
+      <p class="lead"><code>**kwargs</code> بتجمع أي مدخلات بالاسم (<code>key=value</code>) في <b>dictionary</b> واحد — مفيدة جدًا لما عدد وأسماء المدخلات مش ثابتة.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>double_star.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">def</span> obj(**b):
+    <span class="f">print</span>(b.keys())
+    <span class="f">print</span>(b.values())
+    <span class="k">return</span> b
+
+obj(name=<span class="s">"s2"</span>, age=<span class="s">30</span>)</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>dict_keys(['name', 'age'])
+dict_values(['s2', 30])
+{'name': 's2', 'age': 30}</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>kwargs_pandas.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">import</span> pandas <span class="k">as</span> pd
+
+<span class="k">def</span> dataframe(**params):
+    <span class="k">return</span> pd.DataFrame(params)
+
+dataframe(name=[<span class="s">"s2"</span>,<span class="s">"s3"</span>], age=[<span class="s">30</span>,<span class="s">23</span>])</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>   name  age
+0   s2    30
+1   s3    23</pre></div>
+      </div>
+      <div class="try"><b>جرب بنفسك:</b> ابعت لـ <code>dataframe()</code> عمود تالت زي <code>grade=["A","B"]</code> وشوف الـ DataFrame بيتوسّع تلقائي.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('kwargs', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 09 MAP -->
+    <section class="topic" id="map">
+      <div class="kicker"><span class="idx">09</span></div>
+      <h2>map() — تطبيق دالة على كل عنصر</h2>
+      <p class="lead"><code>map(function, seq)</code> بتطبّق نفس الدالة على كل عنصر في اللستة، وبترجّع <b>map object</b> لازم تحوّله لـ <code>list()</code> عشان تشوف قيمه — وبيتستهلك مرة واحدة بس.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>map_basic.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">def</span> check(num):
+    <span class="k">return</span> <span class="s">"Even"</span> <span class="k">if</span> num % <span class="s">2</span> == <span class="s">0</span> <span class="k">else</span> <span class="s">"Odd"</span>
+
+lst = [<span class="s">1</span>,<span class="s">2</span>,<span class="s">3</span>,<span class="s">4</span>,<span class="s">5</span>]
+result = <span class="f">list</span>(<span class="f">map</span>(check, lst))</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>['Odd', 'Even', 'Odd', 'Even', 'Odd']</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>map_once_only.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>res = <span class="f">map</span>(check, lst)
+<span class="f">print</span>(<span class="f">list</span>(res))   <span class="c"># أول مرة: يطلع كل القيم</span>
+<span class="f">print</span>(<span class="f">list</span>(res))   <span class="c"># تاني مرة: فاضي!</span></pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>['Odd', 'Even', 'Odd', 'Even', 'Odd']
+[]</pre></div>
+      </div>
+      <div class="note"><b>خطر شائع:</b> <code>map</code> object بيتستهلك (consumed) بمجرد ما تلفّه مرة — لو عايز تستخدم النتيجة أكتر من مرة خزّنها في <code>list</code> أول ما تجيبها.</div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>list_comprehension.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c"># نفس نتيجة map، بس list comprehension</span>
+[check(i) <span class="k">for</span> i <span class="k">in</span> lst]</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>['Odd', 'Even', 'Odd', 'Even', 'Odd', ...]</pre></div>
+      </div>
+      <div class="note"><b>map مقابل list comprehension:</b> الاتنين بيرجعوا نفس النتيجة هنا. <code>map</code> مفيدة لما عندك دالة جاهزة عايز تطبّقها على كل عنصر، و list comprehension مفيدة لما عايز تكتب المنطق مباشرة في سطر واحد — ده مجرد أسلوب (style)، مفيش صح وغلط.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('map', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 10 FILTER -->
+    <section class="topic" id="filter">
+      <div class="kicker"><span class="idx">10</span></div>
+      <h2>filter() و lambda</h2>
+      <p class="lead"><code>filter(function, seq)</code> بترجّع بس العناصر اللي الدالة بترجّعلها <code>True</code>. لو الدالة بسيطة، ممكن تستبدلها بـ <code>lambda</code> في سطر واحد.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>filter_def.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">def</span> check_even(num):
+    <span class="k">return</span> num % <span class="s">2</span> == <span class="s">0</span>
+
+<span class="f">list</span>(<span class="f">filter</span>(check_even, lst))
+<span class="c"># [2, 4]</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>filter_lambda.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="f">list</span>(<span class="f">filter</span>(<span class="k">lambda</span> num: num % <span class="s">2</span> == <span class="s">0</span>, lst))
+<span class="c"># [2, 4] — نفس النتيجة، بسطر واحد</span></pre>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>lambda_variable.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>x = <span class="k">lambda</span> num: num % <span class="s">2</span> == <span class="s">0</span>
+
+x(<span class="s">10</span>)   <span class="c"># True</span>
+x(<span class="s">11</span>)   <span class="c"># False</span></pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>x(10) → True
+x(11) → False</pre></div>
+      </div>
+      <div class="note"><b>الفرق بين map و filter:</b> <code>map</code> بيحوّل كل عنصر لقيمة جديدة (نفس عدد العناصر)، أما <code>filter</code> فبينتقي بس العناصر اللي بتحقق شرط (عدد العناصر ممكن يقل).</div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>filter_odd.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">def</span> check_odd(num):
+    <span class="k">if</span> num % <span class="s">2</span> != <span class="s">0</span>:
+        <span class="k">return</span> <span class="k">True</span>
+
+<span class="f">list</span>(<span class="f">filter</span>(check_odd, lst))</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>[1, 3, 3, 5, 5, 5, 7, 9]</pre></div>
+      </div>
+      <div class="note"><b>لاحظ:</b> <code>check_odd</code> ملهاش <code>else</code> — لو الشرط غلط الدالة بترجّع <code>None</code> تلقائيًا، و<code>None</code> بيتحسب زي <code>False</code> جوه <code>filter</code>، فبرضه بتشتغل صح.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('filter', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- QUIZ -->
+    <section id="quiz">
+      <div class="kicker"><span class="idx">🧠</span></div>
+      <h2>اختبر نفسك</h2>
+      <p class="lead">10 أسئلة على كل المحاضرة — اختار إجابة وهيبان لك صح ولا غلط مع شرح سريع.</p>
+
+      <div class="quiz-summary">
+        <div>النتيجة</div>
+        <div class="score"><span id="scoreVal">0</span> / <span id="scoreTotal">10</span></div>
+        <button class="reset-btn" onclick="resetQuiz()">إعادة المحاولة</button>
+      </div>
+
+      <div id="quizList"></div>
+    </section>
+
+    <footer>Session 4 · Python functions &amp; functional tools — مرجع مذاكرة للطلاب<span class="sup">Course by Eng. Ahmed Salem · Guide by Mohamed Mahmoud Salama</span></footer>
+  </main>
+</div>
+
+<button id="toTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="ارجع لفوق">↑</button>
+
+<script>
+// intercept in-page anchor clicks so they scroll instead of "navigating"
+// sidebar nav: plain buttons (not <a href>) that scroll to their section —
+document.querySelectorAll('.navlink[data-target]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const target = document.getElementById(btn.dataset.target);
+    if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+});
+
+// active nav on scroll + reveal animation
+const links = document.querySelectorAll('#topnav .navlink[data-target]');
+const sections = [...document.querySelectorAll('section.topic, #quiz')];
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('revealed');
+      links.forEach(l=>l.classList.remove('active'));
+      const match = document.querySelector(`#topnav .navlink[data-target="${e.target.id}"]`);
+      if(match) match.classList.add('active');
+    }
+  });
+},{rootMargin:'-20% 0px -65% 0px'});
+sections.forEach(s=>io.observe(s));
+
+// page scroll progress + back to top
+const TOPIC_IDS = ['operators','builtin','func-intro','func-none','func-input','func-return','args','kwargs','map','filter'];
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  const pct = (h.scrollTop) / (h.scrollHeight - h.clientHeight) * 100;
+  document.getElementById('pageProgress').style.width = pct + '%';
+  document.getElementById('toTop').classList.toggle('show', h.scrollTop > 600);
+});
+
+// ===== copy code buttons =====
+function copyCode(btn){
+  const pre = btn.closest('.code-card').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    const old = btn.textContent;
+    btn.textContent = 'اتنسخ ✓';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent = old; btn.classList.remove('copied'); }, 1400);
+  }).catch(()=>{
+    btn.textContent = 'مش هيتنسخ 😕';
+    setTimeout(()=>{ btn.textContent = 'نسخ'; }, 1400);
+  });
+}
+
+// ===== "mark topic as studied" progress (in-memory, resets on reload) =====
+const doneSet = new Set();
+function updateProgressUI(){
+  const pct = Math.round((doneSet.size / TOPIC_IDS.length) * 100);
+  document.getElementById('sideProgressFill').style.width = pct + '%';
+  document.getElementById('sideProgressText').textContent = pct + '%';
+  document.getElementById('heroProgressFill').style.width = pct + '%';
+  document.getElementById('heroProgressText').textContent = `${doneSet.size} / ${TOPIC_IDS.length} مواضيع خلّصتها`;
+  TOPIC_IDS.forEach(id=>{
+    const navLink = document.querySelector(`#topnav .navlink[data-target="${id}"]`);
+    if(navLink) navLink.classList.toggle('done', doneSet.has(id));
+  });
+}
+function toggleDone(id, btn){
+  if(doneSet.has(id)){
+    doneSet.delete(id);
+    btn.classList.remove('done');
+    btn.textContent = '✓ علّمت الموضوع ده كمذاكَر';
+  } else {
+    doneSet.add(id);
+    btn.classList.add('done');
+    btn.textContent = '✓ مذاكَر — كليك تاني للإلغاء';
+  }
+  updateProgressUI();
+}
+updateProgressUI();
+
+// ===== quiz =====
+const QUESTIONS = [
+  {q:"إيه ناتج 15 // 3 في بايثون؟", opts:["5.0","5","4","خطأ"], a:1, ex:"// هي القسمة الصحيحة (Floor Division) بترجع عدد صحيح، 15 // 3 = 5."},
+  {q:"إيه اللي بترجعه دالة مفيهاش return لو خزّنت ناتجها في متغير؟", opts:["0","فراغ","None","خطأ Syntax"], a:2, ex:"أي دالة من غير return بترجع None تلقائيًا."},
+  {q:"say_hello(30, \"Ahmed\") مع def say_hello(name, age=0) هتطبع إيه؟", opts:["Hello, Ahmed Your age is 30","Hello, 30 Your age is Ahmed","خطأ TypeError","Hello, Your age is 0"], a:1, ex:"القيم positional بتتحدد بالترتيب مش بالمعنى، فـ 30 راح لـ name و Ahmed راح لـ age."},
+  {q:"*args جوه تعريف الدالة بتجمع المدخلات في إيه؟", opts:["list","dictionary","tuple","set"], a:2, ex:"*args بتجمع كل القيم اللي اتبعتت positional في tuple واحد."},
+  {q:"**kwargs بتجمع المدخلات في إيه؟", opts:["tuple","dictionary","list","string"], a:1, ex:"**kwargs بتجمع القيم اللي اتبعتت بالاسم (key=value) في dictionary."},
+  {q:"list(map(check, lst)) بتعمل إيه بالظبط؟", opts:["بتنتقي عناصر بس","بتطبّق check على كل عنصر وترجع النتايج كلها","بترتب اللستة","بتحذف عناصر"], a:1, ex:"map بتطبّق نفس الدالة على كل عنصر في اللستة وترجع نتيجة لكل عنصر، من غير ما تنتقي أو تحذف."},
+  {q:"لو عملت res = map(check, lst) وطبعت list(res) مرتين، النتيجة التانية هتبقى إيه؟", opts:["نفس النتيجة الأولى","[]","خطأ","None"], a:1, ex:"map object بيتستهلك مرة واحدة بس، فالمرة التانية بترجع لستة فاضية."},
+  {q:"list(filter(lambda num: num % 2 == 0, lst)) بترجع إيه؟", opts:["كل عناصر lst مضروبة في 2","العناصر الزوجية بس من lst","العناصر الفردية بس من lst","True أو False لكل عنصر"], a:1, ex:"filter بترجع بس العناصر اللي الشرط جواها True — هنا الأرقام الزوجية."},
+  {q:"الفرق الأساسي بين map و filter إيه؟", opts:["مفيش فرق خالص","map بتغيّر قيمة كل عنصر، filter بتنتقي عناصر حسب شرط","filter بترجع tuple دايمًا","map بتشتغل بس مع الأرقام"], a:1, ex:"map بتحوّل كل عنصر لقيمة جديدة (نفس العدد)، filter بتفلتر العناصر حسب شرط (العدد ممكن يقل)."},
+  {q:"x = lambda num: num % 2 == 0 ثم x(11) هترجع إيه؟", opts:["True","False","11","خطأ"], a:1, ex:"11 عدد فردي، فـ 11 % 2 == 0 قيمتها False."}
+];
+
+const list = document.getElementById('quizList');
+let answered = new Array(QUESTIONS.length).fill(false);
+let score = 0;
+
+function render(){
+  list.innerHTML = '';
+  QUESTIONS.forEach((item, qi)=>{
+    const card = document.createElement('div');
+    card.className = 'qcard';
+    card.innerHTML = `
+      <div class="qtext">${qi+1}. ${item.q}</div>
+      <div class="opts">
+        ${item.opts.map((o,oi)=>`<button class="opt" data-q="${qi}" data-o="${oi}">${o}</button>`).join('')}
+      </div>
+      <div class="explain" id="ex-${qi}">💡 ${item.ex}</div>
+    `;
+    list.appendChild(card);
+  });
+  document.querySelectorAll('.opt').forEach(btn=>{
+    btn.addEventListener('click', onAnswer);
+  });
+  document.getElementById('scoreTotal').textContent = QUESTIONS.length;
+}
+
+function onAnswer(e){
+  const qi = +e.target.dataset.q;
+  const oi = +e.target.dataset.o;
+  if(answered[qi]) return;
+  answered[qi] = true;
+  const item = QUESTIONS[qi];
+  const opts = document.querySelectorAll(`.opt[data-q="${qi}"]`);
+  opts.forEach(b=>b.disabled = true);
+  if(oi === item.a){
+    e.target.classList.add('correct');
+    score++;
+  } else {
+    e.target.classList.add('wrong');
+    opts[item.a].classList.add('correct');
+  }
+  document.getElementById(`ex-${qi}`).style.display = 'block';
+  document.getElementById('scoreVal').textContent = score;
+}
+
+function resetQuiz(){
+  answered = new Array(QUESTIONS.length).fill(false);
+  score = 0;
+  document.getElementById('scoreVal').textContent = 0;
+  render();
+}
+
+render();
+</script>
+</body>
+</html>

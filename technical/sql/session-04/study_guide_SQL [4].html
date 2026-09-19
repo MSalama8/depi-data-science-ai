@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session · Python + PostgreSQL · psycopg2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #061a13;
+    --bg-soft: #0a231a;
+    --panel: rgba(16,44,31,.6);
+    --line: #204a37;
+    --ink: #eafff3;
+    --ink-dim: #a9d9c1;
+    --copper: #e08a4f;
+    --copper-dim: #b8672f;
+    --cyan: #4ee2cf;
+    --cyan-dim: #24ab9a;
+    --rose: #fb7185;
+    --green: #7fe6a8;
+    --code-bg: #04120c;
+    --radius: 16px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; overflow-x:hidden; position:relative;
+    background:
+      repeating-linear-gradient(90deg, rgba(78,226,207,.035) 0 1px, transparent 1px 60px),
+      repeating-linear-gradient(0deg, rgba(224,138,79,.03) 0 1px, transparent 1px 60px),
+      radial-gradient(1100px 520px at 90% -6%, rgba(224,138,79,.10), transparent 60%),
+      radial-gradient(950px 520px at -6% 18%, rgba(78,226,207,.12), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Cairo',sans-serif;
+    line-height:1.75;
+  }
+  code, .mono{font-family:'JetBrains Mono',monospace;}
+  ::selection{background:rgba(78,226,207,.28); color:#fff;}
+
+  #spotlight{
+    position:fixed; inset:0; pointer-events:none; z-index:2; opacity:0;
+    background: radial-gradient(420px circle at var(--mx,50%) var(--my,50%), rgba(78,226,207,.08), transparent 70%);
+    transition:opacity .4s ease;
+  }
+  #spotlight.on{opacity:1;}
+
+  .pulse-dot-bg{position:fixed; border-radius:50%; z-index:0; pointer-events:none; animation:pulseglow 3.2s ease-in-out infinite;}
+  @keyframes pulseglow{0%,100%{opacity:.15; transform:scale(1);} 50%{opacity:.55; transform:scale(1.4);}}
+
+  #pageProgress{
+    position:fixed; top:0; left:0; height:3px; width:0%;
+    background:linear-gradient(90deg, var(--cyan), var(--copper));
+    box-shadow:0 0 10px rgba(78,226,207,.6);
+    z-index:999; transition:width .1s linear;
+  }
+
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg-soft);}
+  ::-webkit-scrollbar-thumb{background:linear-gradient(var(--cyan-dim), var(--copper-dim)); border-radius:10px;}
+
+  .shell{display:grid; grid-template-columns: 270px 1fr; min-height:100vh; position:relative; z-index:1;}
+  @media (max-width: 880px){ .shell{grid-template-columns: 1fr;} .side{position:static; height:auto;} }
+
+  .side{
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    background:linear-gradient(180deg, var(--bg-soft), var(--bg));
+    padding:28px 18px; position:relative;
+  }
+  .side::after{
+    content:""; position:absolute; top:0; bottom:0; left:0; width:3px;
+    background:linear-gradient(180deg, var(--cyan), var(--copper) 55%, var(--rose));
+    box-shadow:0 0 16px rgba(78,226,207,.4), 0 0 26px rgba(224,138,79,.25);
+  }
+  @media (max-width: 880px){ .side::after{display:none;} }
+
+  .brand{display:flex; align-items:center; gap:11px; margin-bottom:8px; padding:0 6px;}
+  .brand .dot{
+    width:13px;height:13px;border-radius:4px;
+    background:linear-gradient(135deg, var(--cyan), var(--copper));
+    box-shadow:0 0 16px rgba(78,226,207,.55);
+  }
+  .brand b{font-size:15.5px; letter-spacing:.3px;}
+  .brand span{display:block; font-size:11px; color:var(--ink-dim);}
+
+  .supervisor{
+    margin:0 6px 14px; padding:12px 14px;
+    border:1px solid rgba(78,226,207,.28); border-radius:12px;
+    background:linear-gradient(135deg, rgba(78,226,207,.09), rgba(224,138,79,.07));
+    font-size:12px; color:var(--ink-dim); line-height:1.7;
+  }
+  .supervisor b{color:var(--copper); display:block; font-size:12.5px; margin-bottom:2px; font-weight:800;}
+
+  .side-progress{margin:0 6px 20px; padding:12px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);}
+  .ring-wrap{display:flex; align-items:center; justify-content:center; margin-bottom:8px;}
+  .ring-wrap svg{transform:rotate(-90deg);}
+  .ring-bg{fill:none; stroke:var(--code-bg); stroke-width:6;}
+  .ring-fg{fill:none; stroke:url(#ringGrad); stroke-width:6; stroke-linecap:round; transition:stroke-dashoffset .5s ease;}
+  .ring-label{margin-top:-46px; text-align:center; font-family:'JetBrains Mono',monospace; font-size:13px; color:var(--cyan); font-weight:700; pointer-events:none;}
+  .side-progress .lbl{display:flex; justify-content:center; font-size:11.5px; color:var(--ink-dim); margin-top:8px; font-family:'JetBrains Mono',monospace;}
+  .track{height:7px; border-radius:20px; background:var(--code-bg); overflow:hidden; border:1px solid var(--line);}
+  .fill{height:100%; width:0%; border-radius:20px; background:linear-gradient(90deg, var(--cyan), var(--copper)); transition:width .35s ease; box-shadow:0 0 8px rgba(78,226,207,.5);}
+
+  nav .navlink{
+    display:flex; align-items:center; gap:10px; width:100%;
+    padding:9.5px 11px; border-radius:10px; color:var(--ink-dim);
+    text-decoration:none; font-size:13.2px; margin-bottom:2px;
+    border:1px solid transparent; transition:.2s ease;
+    position:relative; background:none; font-family:'Cairo',sans-serif;
+    cursor:pointer; text-align:right;
+  }
+  nav .navlink .n{
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--copper);
+    width:22px; text-align:center;
+  }
+  nav .navlink:hover{background:var(--panel); color:var(--ink); transform:translateX(-2px);}
+  nav .navlink.active{
+    background:linear-gradient(90deg, rgba(78,226,207,.15), rgba(224,138,79,.08));
+    border-color:rgba(78,226,207,.35); color:var(--cyan);
+  }
+  nav .navlink.active .n{color:var(--cyan);}
+  nav .navlink .check{margin-right:auto; font-size:12px; color:var(--green); opacity:0; transition:.2s;}
+  nav .navlink.done .check{opacity:1;}
+  .nav-quiz{margin-top:16px; padding-top:16px; border-top:1px dashed var(--line);}
+
+  main{padding:46px clamp(20px,4vw,68px) 90px; position:relative; z-index:1;}
+  .hero{
+    background:linear-gradient(155deg, var(--panel), var(--bg-soft) 70%);
+    border:1px solid var(--line); border-radius:22px;
+    padding:38px clamp(22px,4vw,48px); margin-bottom:42px; position:relative; overflow:hidden;
+    box-shadow:0 30px 60px -30px rgba(0,0,0,.7);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  }
+  .hero::before{
+    content:""; position:absolute; inset:0; border-radius:22px; padding:1px;
+    background:linear-gradient(120deg, rgba(78,226,207,.5), transparent 30%, transparent 70%, rgba(224,138,79,.5));
+    -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+  }
+  .hero::after{
+    content:"conn = psycopg2.connect()"; position:absolute; left:-10px; bottom:-16px;
+    font-family:'JetBrains Mono',monospace; font-size:32px; color:rgba(78,226,207,.06);
+    letter-spacing:1px; pointer-events:none;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:1.5px;
+    background:linear-gradient(90deg, var(--cyan), var(--copper));
+    -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:700;
+  }
+  .hero h1{font-size:clamp(26px,4vw,38px); margin:11px 0 9px; font-weight:900;}
+  .hero p{color:var(--ink-dim); max-width:700px; margin:0; font-size:15px;}
+  .hero-credit{margin:10px 0 0; font-size:12.5px; color:var(--ink-dim); font-family:'JetBrains Mono',monospace; direction:ltr; unicode-bidi:embed; text-align:right;}
+  .hero-tags{display:flex; flex-wrap:wrap; gap:9px; margin-top:22px;}
+  .tag{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-dim);
+    border:1px solid var(--line); padding:6px 12px; border-radius:20px; background:var(--code-bg);
+    transition:.2s;
+  }
+  .tag:hover{border-color:rgba(78,226,207,.4); color:var(--cyan);}
+
+  .hero-progress{margin-top:24px; display:flex; align-items:center; gap:14px;}
+  .hero-progress .track{flex:1; height:9px;}
+  .hero-progress span{font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--cyan); white-space:nowrap;}
+
+  .hero-art{position:absolute; left:22px; bottom:14px; width:150px; height:150px; opacity:.85; pointer-events:none; z-index:0;}
+  @media (max-width:900px){ .hero-art{display:none;} }
+  .hero-art .float1{animation:floaty 5s ease-in-out infinite;}
+  .hero-art .float2{animation:floaty 6.5s ease-in-out infinite; animation-delay:-2s;}
+  @keyframes floaty{0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);}}
+  .hero-art .dash{stroke-dasharray:6 7; animation:dashflow 2.2s linear infinite;}
+  @keyframes dashflow{to{stroke-dashoffset:-52;}}
+  .hero-art .pulse-dot{animation:dotpulse 1.7s ease-in-out infinite;}
+  @keyframes dotpulse{0%,100%{opacity:.35; r:2.6;} 50%{opacity:1; r:4;}}
+
+  section.topic{
+    border-top:1px solid var(--line); padding-top:36px; margin-top:36px; scroll-margin-top:24px;
+    opacity:0; transform:translateY(14px); transition:opacity .55s ease, transform .55s ease;
+  }
+  section.topic.revealed{opacity:1; transform:translateY(0);}
+  section.topic .kicker{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
+  section.topic .kicker .idx{
+    font-family:'JetBrains Mono',monospace; color:var(--cyan); font-size:13px;
+    border:1px solid var(--cyan-dim); border-radius:9px; padding:2px 10px;
+    background:rgba(78,226,207,.06);
+  }
+  section.topic h2{font-size:23.5px; margin:7px 0 12px; font-weight:800;}
+  section.topic .lead{color:var(--ink-dim); max-width:780px; margin-bottom:19px; font-size:15px;}
+
+  .grid2{display:grid; grid-template-columns: 1.1fr .9fr; gap:18px; align-items:start;}
+  @media (max-width:760px){.grid2{grid-template-columns:1fr;}}
+
+  .code-card{
+    background:var(--code-bg); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden; transition:transform .15s ease, box-shadow .25s ease, border-color .25s ease;
+    position:relative; transform-style:preserve-3d; will-change:transform;
+  }
+  .code-card:hover{border-color:rgba(224,138,79,.45); box-shadow:0 20px 42px -18px rgba(224,138,79,.32);}
+  .code-card .bar{
+    display:flex; align-items:center; gap:7px; padding:10px 14px; border-bottom:1px solid var(--line);
+    background:#062319;
+  }
+  .code-card .bar i{width:9px;height:9px;border-radius:50%;background:#1e4432;}
+  .code-card .bar span{margin-right:auto; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim);}
+  .copy-btn{
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 9px; border-radius:7px;
+    cursor:pointer; transition:.2s;
+  }
+  .copy-btn:hover{border-color:var(--cyan); color:var(--cyan);}
+  .copy-btn.copied{border-color:var(--green); color:var(--green);}
+  .code-card pre{
+    margin:0; padding:17px; direction:ltr; text-align:left; overflow-x:auto;
+    font-family:'JetBrains Mono',monospace; font-size:13px; color:#e8fdf4; line-height:1.68;
+  }
+  .code-card pre .c{color:#4d7d68;}
+  .code-card pre .k{color:var(--copper);}
+  .code-card pre .s{color:#fcd34d;}
+  .code-card pre .f{color:var(--cyan);}
+
+  .out-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;
+    transition:.25s ease; backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    transform-style:preserve-3d; will-change:transform;
+  }
+  .out-card:hover{border-color:rgba(78,226,207,.35); box-shadow:0 20px 40px -22px rgba(78,226,207,.25);}
+  .out-card .bar{padding:10px 14px; border-bottom:1px solid var(--line); font-size:11.5px; color:var(--cyan); font-family:'JetBrains Mono',monospace;}
+  .out-card pre{margin:0; padding:17px; direction:ltr; text-align:left; font-family:'JetBrains Mono',monospace; font-size:12.6px; color:#d5f5ea; white-space:pre-wrap; word-break:break-word;}
+
+  .out-card .rtl-content{
+    padding:17px 19px; direction:rtl; text-align:right; font-family:'Cairo',sans-serif;
+    font-size:14px; color:var(--ink); line-height:2.1;
+  }
+  .out-card .rtl-content code{
+    font-family:'JetBrains Mono',monospace; color:var(--cyan); background:var(--code-bg);
+    padding:1px 7px; border-radius:5px; font-size:12.5px; direction:ltr; unicode-bidi:embed; display:inline-block;
+  }
+  .out-card .rtl-content .step{display:flex; gap:8px; align-items:flex-start; margin-bottom:8px;}
+  .out-card .rtl-content .step:last-child{margin-bottom:0;}
+  .out-card .rtl-content .arrow{color:var(--copper); flex-shrink:0;}
+
+  .note{
+    margin-top:15px; padding:15px 18px; border-radius:11px;
+    background:rgba(224,138,79,.11); border:1px solid rgba(224,138,79,.32);
+    font-size:14.5px; line-height:2; color:#ffe3bd;
+  }
+  .note b{color:var(--copper);}
+  .try{
+    margin-top:15px; padding:16px 18px; border-radius:11px;
+    background:rgba(78,226,207,.1); border:1px dashed rgba(78,226,207,.42);
+    font-size:14.5px; line-height:2;
+  }
+  .try b{color:var(--cyan);}
+  .warn{
+    margin-top:15px; padding:15px 18px; border-radius:11px;
+    background:rgba(251,113,133,.11); border:1px solid rgba(251,113,133,.34);
+    font-size:14.5px; line-height:2; color:#ffd0d7;
+  }
+  .warn b{color:var(--rose);}
+
+  table.mini{width:100%; border-collapse:collapse; margin-top:14px; font-size:14px; font-family:'Cairo',sans-serif; background:var(--code-bg); border-radius:10px; overflow:hidden;}
+  table.mini tr:nth-child(even) td{background:rgba(78,226,207,.035);}
+  table.mini th, table.mini td{border:1px solid var(--line); padding:9px 12px; text-align:right; font-family:'Cairo',sans-serif;}
+  table.mini th{background:var(--panel); color:var(--cyan); font-size:13px; font-weight:700;}
+  table.mini td{color:var(--ink); font-size:14px; font-weight:500; line-height:1.9;}
+  table.mini code{
+    font-family:'JetBrains Mono',monospace; direction:ltr; unicode-bidi:embed; display:inline-block;
+    color:var(--cyan); background:var(--code-bg); border:1px solid var(--line);
+    padding:2px 7px; border-radius:6px; font-size:12px;
+  }
+  .ltr{direction:ltr; unicode-bidi:embed; display:inline-block;}
+
+  .mark-row{display:flex; justify-content:flex-end; margin-top:18px;}
+  .mark-btn{
+    background:var(--code-bg); border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'Cairo',sans-serif; font-size:13px; font-weight:700; padding:9px 16px;
+    border-radius:10px; cursor:pointer; transition:.2s; display:flex; align-items:center; gap:7px;
+  }
+  .mark-btn:hover{border-color:var(--cyan-dim); color:var(--ink);}
+  .mark-btn.done{border-color:var(--green); color:var(--green); background:rgba(127,230,168,.08);}
+
+  #quiz{border-top:1px solid var(--line); padding-top:36px; margin-top:52px;}
+  .qcard{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:21px 23px; margin-bottom:16px; transition:.2s;
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  }
+  .qcard:hover{border-color:rgba(78,226,207,.25);}
+  .qcard .qtext{font-weight:700; margin-bottom:14px; font-size:15.5px;}
+  .qcard .opts{display:grid; gap:9px;}
+  .opt{
+    display:block; width:100%; text-align:right; cursor:pointer;
+    background:var(--code-bg); border:1px solid var(--line); color:var(--ink);
+    padding:11px 15px; border-radius:10px; font-family:'Cairo',sans-serif; font-size:14px;
+    transition:.15s;
+  }
+  .opt:hover{border-color:var(--cyan-dim);}
+  .opt.correct{border-color:var(--green); background:rgba(127,230,168,.13); color:var(--green);}
+  .opt.wrong{border-color:var(--rose); background:rgba(251,113,133,.12); color:var(--rose);}
+  .opt[disabled]{cursor:default;}
+  .explain{display:none; margin-top:12px; font-size:13.5px; color:var(--ink-dim); border-top:1px dashed var(--line); padding-top:10px;}
+
+  .quiz-summary{
+    background:linear-gradient(155deg, var(--panel), var(--bg-soft));
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:23px; text-align:center; margin-bottom:20px;
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  }
+  .quiz-summary .score{
+    font-family:'JetBrains Mono',monospace; font-size:36px; font-weight:700;
+    background:linear-gradient(90deg, var(--cyan), var(--copper));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .reset-btn{
+    margin-top:11px; background:linear-gradient(90deg, var(--cyan), #a6f5e8); color:#04241b; border:none; font-weight:700;
+    padding:10px 22px; border-radius:10px; cursor:pointer; font-family:'Cairo',sans-serif; font-size:14px;
+    transition:.2s;
+  }
+  .reset-btn:hover{transform:translateY(-1px); box-shadow:0 10px 22px -10px rgba(78,226,207,.6);}
+
+  #toTop{
+    position:fixed; bottom:22px; left:22px; width:42px; height:42px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--line); color:var(--cyan); font-size:18px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    opacity:0; pointer-events:none; transition:.25s; z-index:998;
+  }
+  #toTop.show{opacity:1; pointer-events:auto; box-shadow:0 0 14px rgba(78,226,207,.35);}
+  #toTop:hover{border-color:var(--cyan);}
+
+  footer{text-align:center; color:var(--ink-dim); font-size:12.5px; padding:34px 0 10px; position:relative; z-index:1;}
+  footer .sup{display:block; margin-top:6px; color:var(--cyan-dim); font-family:'JetBrains Mono',monospace; font-size:11.5px;}
+</style>
+</head>
+<body>
+<div id="pageProgress"></div>
+<div id="spotlight"></div>
+<div class="shell">
+
+  <aside class="side">
+    <div class="brand"><div class="dot"></div><div><b>Python + PostgreSQL</b><span>psycopg2 · Connections &amp; Queries</span></div></div>
+    <div class="supervisor"><b>Instructor</b>Eng. Ahmed Salem<br><b style="margin-top:6px;">Guide by</b>Mohamed Mahmoud Salama</div>
+    <div class="side-progress">
+      <div class="ring-wrap">
+        <svg width="88" height="88" viewBox="0 0 88 88">
+          <defs>
+            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#4ee2cf"/>
+              <stop offset="100%" stop-color="#e08a4f"/>
+            </linearGradient>
+          </defs>
+          <circle class="ring-bg" cx="44" cy="44" r="38"></circle>
+          <circle class="ring-fg" id="ringFg" cx="44" cy="44" r="38" stroke-dasharray="238.76" stroke-dashoffset="238.76"></circle>
+        </svg>
+      </div>
+      <div class="ring-label" id="sideProgressText">0%</div>
+      <div class="lbl"><span>تقدّمك في المذاكرة</span></div>
+      <div class="track" style="margin-top:8px;"><div class="fill" id="sideProgressFill"></div></div>
+    </div>
+    <nav id="topnav">
+      <button type="button" class="navlink" data-target="connect"><span class="n">01</span> الاتصال بالقاعدة<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="cursor"><span class="n">02</span> الـ Cursor<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="execute"><span class="n">03</span> execute()<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="fetch"><span class="n">04</span> fetchone/many/all<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="scroll"><span class="n">05</span> scroll()<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="insert"><span class="n">06</span> INSERT وParameterized Query<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="executemany"><span class="n">07</span> executemany()<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="search"><span class="n">08</span> بحث ديناميكي<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="exceptions"><span class="n">09</span> try/except/rollback<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="errortypes"><span class="n">10</span> أنواع أخطاء psycopg2<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="finally"><span class="n">11</span> finally وتنظيف الموارد<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="summary"><span class="n">12</span> القاعدة الذهبية<span class="check">✓</span></button>
+      <div class="nav-quiz">
+        <button type="button" class="navlink" data-target="quiz">🧠 اختبر نفسك (كويز)</button>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="hero">
+      <svg class="hero-art" viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
+        <g class="float1">
+          <rect x="20" y="18" width="34" height="22" rx="4" fill="none" stroke="#e08a4f" stroke-width="2.2" opacity="0.85"/>
+          <line x1="37" y1="40" x2="37" y2="55" stroke="#e08a4f" stroke-width="2.2" opacity="0.85"/>
+        </g>
+        <path class="dash" d="M37 55 L37 78" stroke="#4ee2cf" stroke-width="2.4" opacity="0.9"/>
+        <g class="float2">
+          <ellipse cx="37" cy="90" rx="17" ry="6" fill="none" stroke="#4ee2cf" stroke-width="2.2" opacity="0.85"/>
+          <path d="M20 90 v20 a17 6 0 0 0 34 0 v-20" fill="none" stroke="#4ee2cf" stroke-width="2.2" opacity="0.85"/>
+          <line x1="20" y1="100" x2="54" y2="100" stroke="#4ee2cf" stroke-width="1.4" opacity="0.5"/>
+        </g>
+        <circle class="pulse-dot" cx="37" cy="60" r="3" fill="#e08a4f"/>
+        <circle class="pulse-dot" cx="90" cy="30" r="2.6" fill="#4ee2cf" style="animation-delay:-0.6s"/>
+        <circle class="pulse-dot" cx="105" cy="60" r="2.6" fill="#e08a4f" style="animation-delay:-1.1s"/>
+      </svg>
+      <div class="eyebrow">SESSION · PYTHON + POSTGRESQL</div>
+      <h1>الاتصال بقاعدة البيانات من بايثون — psycopg2</h1>
+      <p>مرجع مذاكرة تفاعلي — إزاي توصّل بايثون بـ PostgreSQL فعليًا، تنفّذ استعلامات، تتعامل مع النتايج بطرق مختلفة، وتمسك الأخطاء صح من غير ما اتصالك يفضل "عالق". كل كود هنا حقيقي من ملفات الجلسة (connect, insert, executemany, search, scroll).</p>
+      <p class="hero-credit">Course by Eng. Ahmed Salem · Study guide compiled by Mohamed Mahmoud Salama</p>
+      <div class="hero-tags">
+        <span class="tag">psycopg2.connect()</span><span class="tag">cursor()</span><span class="tag">execute()</span>
+        <span class="tag">fetchone/many/all</span><span class="tag">scroll()</span><span class="tag">Parameterized Query</span>
+        <span class="tag">executemany()</span><span class="tag">try/except/finally</span><span class="tag">commit/rollback</span>
+      </div>
+      <div class="hero-progress">
+        <div class="track"><div class="fill" id="heroProgressFill"></div></div>
+        <span id="heroProgressText">0 / 12 مواضيع خلّصتها</span>
+      </div>
+    </div>
+
+    <!-- 01 CONNECT -->
+    <section class="topic" id="connect">
+      <div class="kicker"><span class="idx">01</span></div>
+      <h2>الاتصال بقاعدة البيانات — psycopg2.connect()</h2>
+      <p class="lead">أول خطوة في أي سكريبت: تفتح قناة اتصال حقيقية بين بايثون وسيرفر PostgreSQL. محتاج 4 حاجات بالظبط: مكان السيرفر، اسم قاعدة البيانات، اسم المستخدم، والباسورد.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>connect.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">import</span> psycopg2
+
+<span class="k">try</span>:
+    conn = psycopg2.connect(
+        host=<span class="s">"localhost"</span>,
+        database=<span class="s">"company_db"</span>,
+        user=<span class="s">"postgres"</span>,
+        password=<span class="s">"root"</span>
+    )
+    <span class="f">print</span>(<span class="s">"Connection to the database established successfully."</span>)
+<span class="k">except</span> Exception <span class="k">as</span> e:
+    <span class="f">print</span>(<span class="s">f"Error connecting to the database: {e}"</span>)</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ فكّر فيها كده</div><div class="rtl-content">
+          <div class="step"><span class="arrow">◂</span><span><code>host</code> = عنوان السيرفر</span></div>
+          <div class="step"><span class="arrow">◂</span><span><code>database</code> = اسم قاعدة البيانات</span></div>
+          <div class="step"><span class="arrow">◂</span><span><code>user</code> = اسم المستخدم</span></div>
+          <div class="step"><span class="arrow">◂</span><span><code>password</code> = كلمة السر</span></div>
+          <div class="step" style="margin-top:10px; border-top:1px dashed var(--line); padding-top:10px;">
+            <span class="arrow">◂</span><span><code>conn</code> هو "الخط" اللي واصل بايثون بالسيرفر — من غيره مفيش أي تعامل ممكن</span>
+          </div>
+        </div></div>
+      </div>
+      <div class="note"><b>ليه try/except من أول سطر؟</b> الاتصال ممكن يفشل لأسباب كتير: السيرفر مقفول، الباسورد غلط، اسم قاعدة البيانات غلط. من غير try/except، أي فشل هيوقف البرنامج كله برسالة تكنيكية مخيفة (traceback) بدل رسالة واضحة.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('connect', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 02 CURSOR -->
+    <section class="topic" id="cursor">
+      <div class="kicker"><span class="idx">02</span></div>
+      <h2>الـ Cursor — إيه هو وليه محتاجينه؟</h2>
+      <p class="lead">فكّر في <code>conn</code> إنه خط التليفون الواصل بين بايثون والداتابيز، والـ <code>cursor</code> هو "الإيد" اللي بتتحرك جوه الداتابيز، تنفّذ الأوامر، وترجّعلك النتايج.</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>cursor.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre>cursor = conn.cursor()</pre>
+      </div>
+      <div class="warn"><b>خطر شائع:</b> من غير cursor، مينفعش تبعت أي أمر SQL خالص. أي عملية (SELECT, INSERT, UPDATE...) لازم تمر بالـ cursor أولًا.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('cursor', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 03 EXECUTE -->
+    <section class="topic" id="execute">
+      <div class="kicker"><span class="idx">03</span></div>
+      <h2>execute() — تنفيذ الاستعلام</h2>
+      <p class="lead">بتبعت جملة الـ SQL للسيرفر عشان ينفّذها ويجهّز النتيجة — لكنها <b>مبترجعش النتيجة فعليًا</b>. عشان تجيب النتيجة، محتاج دالة fetch منفصلة (الموضوع الجاي).</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>execute.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre>cursor.execute(<span class="s">"select * from employee"</span>)</pre>
+      </div>
+      <div class="note"><b>افتكرها كده:</b> execute() = "يا سيرفر، نفّذ الاستعلام ده وجهّز النتيجة عندك". fetch...() = "دلوقتي ابعتلي النتيجة اللي جهّزتها".</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('execute', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 04 FETCH -->
+    <section class="topic" id="fetch">
+      <div class="kicker"><span class="idx">04</span></div>
+      <h2>الفرق الجوهري: fetchone / fetchmany / fetchall</h2>
+      <p class="lead">أي استعلام SQL بيرجّع "مجموعة نتائج" (result set)، والـ cursor بيقف عند صف معيّن جواها — وكل دالة بتتعامل مع الموقف ده بطريقة مختلفة.</p>
+      <table class="mini">
+        <tr><th>الدالة</th><th>بترجع إيه</th><th>بتحرك المؤشر إد إيه</th></tr>
+        <tr><td><code>fetchone()</code></td><td>صف واحد بس (اللي المؤشر واقف عنده)</td><td>خطوة واحدة للصف اللي بعده</td></tr>
+        <tr><td><code>fetchmany(n)</code></td><td>أول n صف من مكان المؤشر</td><td>n خطوة</td></tr>
+        <tr><td><code>fetchall()</code></td><td>كل الصفوف المتبقية دفعة واحدة</td><td>لحد آخر النتيجة</td></tr>
+      </table>
+      <div class="warn"><b>خطر شائع:</b> <code>fetchall()</code> خطيرة لو الجدول فيه ملايين الصفوف — هتتحمّل كلها في الذاكرة (RAM) دفعة واحدة. لو الجدول كبير، استخدم <code>fetchmany(n)</code> في لوب بدل <code>fetchall()</code>.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('fetch', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 05 SCROLL -->
+    <section class="topic" id="scroll">
+      <div class="kicker"><span class="idx">05</span></div>
+      <h2>scroll() — تحريك المؤشر من غير قراءة</h2>
+      <p class="lead"><code>scroll()</code> مختلفة تمامًا عن دوال fetch — هي مش "بتقرأ" أي حاجة، بس بتحرّك المؤشر لمكان تاني في مجموعة النتائج.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>scroll.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>cursor.execute(<span class="s">"select * from employee"</span>)
+cursor.scroll(<span class="s">2</span>)              <span class="c"># انقل المؤشر خطوتين للقدام</span>
+rows = cursor.fetchmany(<span class="s">5</span>)   <span class="c"># واقرأ 5 صفوف من المكان الجديد</span></pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ فكّر فيها كده</div><div class="rtl-content">
+          <div class="step"><span class="arrow">◂</span><span>الصفوف: <code style="direction:ltr;">[0] [1] [2] [3] [4] [5] ...</code></span></div>
+          <div class="step"><span class="arrow">◂</span><span>المؤشر بيبدأ عند <code>[0]</code></span></div>
+          <div class="step" style="margin-top:10px; border-top:1px dashed var(--line); padding-top:10px;">
+            <span class="arrow">◂</span><span><code>scroll(2)</code> → المؤشر يتحرك لـ <code>[2]</code> (من غير أي قراءة)</span>
+          </div>
+          <div class="step"><span class="arrow">◂</span><span><code>fetchmany(5)</code> → يقرا من <code>[2]</code> لحد <code>[6]</code></span></div>
+        </div></div>
+      </div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('scroll', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 06 INSERT -->
+    <section class="topic" id="insert">
+      <div class="kicker"><span class="idx">06</span></div>
+      <h2>INSERT وParameterized Query — ليه %s مش f-string؟</h2>
+      <p class="lead">إضافة صف واحد، وأهم قاعدة أمان في الموضوع كله: استخدام <code>%s</code> بدل ما تحط القيم مباشرة جوه النص.</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>insert.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre>insert_row = (<span class="s">"12123456"</span>, <span class="s">"sakr"</span>, <span class="s">"mo"</span>, <span class="s">80000</span>)
+insert_query = <span class="s">"insert into employee (ssn, fname, lname, salary) values (%s, %s, %s, %s)"</span>
+cursor.execute(insert_query, insert_row)
+conn.commit()</pre>
+      </div>
+      <div class="warn"><b>ليه مش نكتب f"...values ({ssn}, ...)"؟</b> ده اسمه <b>Parameterized Query</b>، وبيمنع مشكلة اسمها <b>SQL Injection</b>. لو حد كتب في القيمة حاجة زي <span class="ltr" style="direction:ltr;">'; DROP TABLE employee; --</span>، هتتفسّر كنص عادي آمن، مش كأمر SQL خطير هيتنفّذ فعليًا.</div>
+      <div class="note"><b>لاحظ:</b> execute() هنا بتاخد باراميتر تاني (الـ tuple)، وpsycopg2 هي اللي بتحط القيم مكان الـ <code>%s</code> بأمان — مش انت اللي بتعمل ده يدويًا.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('insert', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 07 EXECUTEMANY -->
+    <section class="topic" id="executemany">
+      <div class="kicker"><span class="idx">07</span></div>
+      <h2>executemany() — إدخال أكتر من صف مرة واحدة</h2>
+      <p class="lead">نفس فكرة INSERT، بس بدل ما تكرر execute() في لوب لكل صف، executemany() بتاخد لستة من الـ tuples وتدخلهم كلهم بأمر واحد.</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>executemany.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre>insert_row = [
+    (<span class="s">"121234568"</span>, <span class="s">"mohamed"</span>, <span class="s">"mahmoud"</span>, <span class="s">90000</span>),
+    (<span class="s">"12123457"</span>, <span class="s">"ahmed"</span>, <span class="s">"ali"</span>, <span class="s">90000</span>),
+]
+
+cursor.executemany(insert_query, insert_row)
+conn.commit()</pre>
+      </div>
+      <div class="note"><b>ليه أسرع؟</b> بدل ما تبعت للسيرفر أمر منفصل لكل صف (رحلة ذهاب وإياب لكل واحد)، executemany() بتبعت كل الصفوف مرة واحدة — تقليل عدد الرحلات (round trips) بين بايثون والسيرفر.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('executemany', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 08 SEARCH -->
+    <section class="topic" id="search">
+      <div class="kicker"><span class="idx">08</span></div>
+      <h2>بحث ديناميكي بمدخلات المستخدم</h2>
+      <p class="lead">هنا القيمة جاية من المستخدم مباشرة (<code>input()</code>) — وده بالظبط الموقف اللي لازم تستخدم فيه <code>%s</code> إجباريًا، مش اختياريًا.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>search.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>ssn = input(<span class="s">"Enter the ssn of the employee to fetch details: "</span>)
+cursor.execute(
+    <span class="s">"select fname, lname, salary from employee where ssn = %s"</span>,
+    (ssn,)
+)
+row = cursor.fetchone()</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ ليه دي حساسة أمنيًا؟</div><div class="rtl-content">
+          <div class="step"><span class="arrow">◂</span><span>القيمة جاية من مستخدم حقيقي — مش انت اللي كاتبها في الكود</span></div>
+          <div class="step" style="margin-top:10px; border-top:1px dashed var(--line); padding-top:10px;">
+            <span class="arrow">◂</span><span><code>f"...where ssn = {ssn}"</code> → لو <code>ssn</code> جاله قيمة خبيثة، بتتنفذ كأمر SQL حقيقي. خطر!</span>
+          </div>
+          <div class="step" style="margin-top:10px; border-top:1px dashed var(--line); padding-top:10px;">
+            <span class="arrow">◂</span><span><code>"...where ssn = %s", (ssn,)</code> → القيمة بتتعامل معاها كنص دايمًا، مهما كان محتواها</span>
+          </div>
+        </div></div>
+      </div>
+      <div class="note"><b>لاحظ:</b> <code>(ssn,)</code> — الفاصلة دي إجبارية، عشان بايثون تفهم إنها tuple فيه عنصر واحد، مش مجرد قوسين حوالين قيمة عادية.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('search', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 09 EXCEPTIONS -->
+    <section class="topic" id="exceptions">
+      <div class="kicker"><span class="idx">09</span></div>
+      <h2>try/except/rollback — بعمق أكتر</h2>
+      <p class="lead">السر في try/except مش بس "امسك الخطأ" — هو بيحدد مسار التنفيذ الفعلي للبرنامج. ليه فيه try منفصل لكل مرحلة؟</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>insert_full.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre><span class="k">try</span>:                                    <span class="c"># Try #1 — الاتصال</span>
+    conn = psycopg2.connect(...)
+    <span class="f">print</span>(<span class="s">"Connection ... successfully."</span>)
+<span class="k">except</span> Exception <span class="k">as</span> e:
+    <span class="f">print</span>(<span class="s">f"Error connecting ...: {e}"</span>)
+
+cursor = conn.cursor()
+
+<span class="k">try</span>:                                    <span class="c"># Try #2 — الـ insert</span>
+    cursor.execute(insert_query, insert_row)
+    conn.commit()
+    <span class="f">print</span>(<span class="s">"Row inserted successfully."</span>)
+<span class="k">except</span> Exception <span class="k">as</span> e:
+    <span class="f">print</span>(<span class="s">f"Error inserting row: {e}"</span>)
+    conn.rollback()
+<span class="k">finally</span>:
+    <span class="c"># conn.close()</span>
+    <span class="k">pass</span></pre>
+      </div>
+      <div class="note"><b>ليه try منفصل لكل مرحلة؟</b> كل مرحلة عندها مخاطر مختلفة تمامًا — try الاتصال ممكن يفشل بسبب باسورد غلط أو سيرفر مقفول (خطأ "قبل" ما تلمس أي بيانات)، بينما try الـ insert ممكن يفشل بسبب ssn مكرر أو نوع بيانات غلط. لو حطيت كل حاجة في try واحد كبير، مش هتعرف بالظبط فين حصلت المشكلة.</div>
+      <div class="warn"><b>conn.rollback() — أهم سطر في الملف كله:</b> لما تعمل <code>execute()</code> لعملية INSERT، الداتابيز مش بتثبت التغيير فورًا — بتفتح transaction مؤقتة. لو حصل خطأ في نص العملية ومعملتش rollback()، الاتصال هيفضل "عالق" في transaction معلّقة، وأي أمر تاني هتحاول تنفّذه على نفس الـ connection ممكن يرفض يشتغل. افتكرها كده: <code>commit()</code> = احفظ التغيير فعليًا، <code>rollback()</code> = الغِ كل حاجة عملتها من أول العملية دي، ارجع الوضع زي ما كان.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('exceptions', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 10 ERROR TYPES -->
+    <section class="topic" id="errortypes">
+      <div class="kicker"><span class="idx">10</span></div>
+      <h2>ليه except Exception العامة مش أفضل ممارسة؟</h2>
+      <p class="lead">استخدام <code>Exception</code> العامة بيمسك أي خطأ ممكن يحصل، حتى لو مش متعلق بالداتابيز خالص. في مشروع حقيقي، الأفضل تستخدم أنواع أخطاء psycopg2 المتخصصة.</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>specific_errors.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre><span class="k">import</span> psycopg2
+
+<span class="k">try</span>:
+    cursor.execute(insert_query, insert_row)
+    conn.commit()
+<span class="k">except</span> psycopg2.IntegrityError <span class="k">as</span> e:     <span class="c"># مثلاً: ssn مكرر</span>
+    <span class="f">print</span>(<span class="s">f"Duplicate or constraint error: {e}"</span>)
+    conn.rollback()
+<span class="k">except</span> psycopg2.OperationalError <span class="k">as</span> e:   <span class="c"># مشكلة في الاتصال نفسه</span>
+    <span class="f">print</span>(<span class="s">f"Connection issue: {e}"</span>)
+<span class="k">except</span> psycopg2.Error <span class="k">as</span> e:              <span class="c"># أي خطأ تاني متعلق بالداتابيز</span>
+    <span class="f">print</span>(<span class="s">f"Database error: {e}"</span>)
+    conn.rollback()</pre>
+      </div>
+      <div class="note"><b>الفايدة العملية:</b> كده لو حصل duplicate ssn، هتعرف بالظبط إن المشكلة "constraint violation" مش "مشكلة اتصال" — وتقدر تتعامل مع كل حالة بطريقة مختلفة تناسبها (زي إنك تطلب من المستخدم ssn تاني بدل ما توقف البرنامج كله).</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('errortypes', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 11 FINALLY -->
+    <section class="topic" id="finally">
+      <div class="kicker"><span class="idx">11</span></div>
+      <h2>finally — تنظيف الموارد</h2>
+      <p class="lead"><code>finally</code> بتتنفّذ دايمًا، سواء العملية نجحت أو فشلت. أفضل استخدام ليها هو قفل الاتصال بالداتابيز مهما حصل.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>current_code.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">finally</span>:
+    <span class="c"># conn.close()</span>
+    <span class="k">pass</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>better_practice.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">finally</span>:
+    <span class="k">if</span> conn:
+        conn.close()
+        <span class="f">print</span>(<span class="s">"Connection closed."</span>)</pre>
+        </div>
+      </div>
+      <div class="warn"><b>مشكلة الكود الحالي:</b> <code>conn.close()</code> متعملة comment وحطينا <code>pass</code> بدالها — يعني الاتصال فعليًا بيفضل مفتوح لحد ما البرنامج يقفل. لو الملف اتشغّل مرات كتير (زي في اختبار أو تطوير)، هتتراكم عندك اتصالات مفتوحة بتستهلك موارد السيرفر من غير داعي.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('finally', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 12 SUMMARY -->
+    <section class="topic" id="summary">
+      <div class="kicker"><span class="idx">12</span></div>
+      <h2>القاعدة الذهبية: try / except / finally</h2>
+      <p class="lead">ملخّص المسار الكامل لأي عملية على قاعدة البيانات، من الاتصال لحد التنظيف.</p>
+      <table class="mini">
+        <tr><th>الجزء</th><th>بيتنفّذ إمتى</th><th>الاستخدام المثالي</th></tr>
+        <tr><td><code>try</code></td><td>دايمًا (أول حاجة)</td><td>الكود اللي فيه احتمال خطأ</td></tr>
+        <tr><td><code>except</code></td><td>بس لو حصل خطأ</td><td>التعامل مع الخطأ + <code>rollback()</code> لو transaction مفتوحة</td></tr>
+        <tr><td><code>finally</code></td><td>دايمًا (نجح أو فشل)</td><td>تنظيف الموارد — قفل الاتصال</td></tr>
+      </table>
+      <div class="try"><b>خطة تفكير سريعة لأي سكريبت psycopg2 جديد:</b> اتصل (try/except) → افتح cursor → نفّذ الاستعلام (execute) → لو SELECT: اجلب النتيجة بالدالة المناسبة (fetchone/many/all حسب الحجم) → لو INSERT/UPDATE/DELETE: اعمل commit() لو نجح أو rollback() لو فشل (جوه try/except منفصل) → في الآخر: اقفل الاتصال جوه finally مهما حصل.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('summary', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- QUIZ -->
+    <section id="quiz">
+      <div class="kicker"><span class="idx">🧠</span></div>
+      <h2>اختبر نفسك</h2>
+      <p class="lead">10 أسئلة على كل الجلسة — اختار إجابة وهيبان لك صح ولا غلط مع شرح سريع.</p>
+
+      <div class="quiz-summary">
+        <div>النتيجة</div>
+        <div class="score"><span id="scoreVal">0</span> / <span id="scoreTotal">10</span></div>
+        <button class="reset-btn" onclick="resetQuiz()">إعادة المحاولة</button>
+      </div>
+
+      <div id="quizList"></div>
+    </section>
+
+    <footer>Python + PostgreSQL Session · psycopg2 — مرجع مذاكرة للطلاب<span class="sup">Course by Eng. Ahmed Salem · Guide by Mohamed Mahmoud Salama</span></footer>
+  </main>
+</div>
+
+<button id="toTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="ارجع لفوق">↑</button>
+
+<script>
+(function(){
+  const spot = document.getElementById('spotlight');
+  if(window.matchMedia('(pointer:fine)').matches){
+    window.addEventListener('mousemove', (e)=>{
+      spot.style.setProperty('--mx', e.clientX + 'px');
+      spot.style.setProperty('--my', e.clientY + 'px');
+      spot.classList.add('on');
+    });
+    window.addEventListener('mouseleave', ()=> spot.classList.remove('on'));
+  }
+})();
+
+(function(){
+  if(!window.matchMedia('(pointer:fine)').matches) return;
+  document.querySelectorAll('.code-card, .out-card').forEach(card=>{
+    card.addEventListener('mousemove', (e)=>{
+      const r = card.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5;
+      const py = (e.clientY - r.top) / r.height - 0.5;
+      card.style.transform = `perspective(700px) rotateX(${(-py*4).toFixed(2)}deg) rotateY(${(px*4).toFixed(2)}deg) translateZ(2px)`;
+    });
+    card.addEventListener('mouseleave', ()=>{
+      card.style.transform = 'perspective(700px) rotateX(0) rotateY(0)';
+    });
+  });
+})();
+
+document.querySelectorAll('.navlink[data-target]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const target = document.getElementById(btn.dataset.target);
+    if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+});
+
+const links = document.querySelectorAll('#topnav .navlink[data-target]');
+const sections = [...document.querySelectorAll('section.topic, #quiz')];
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('revealed');
+      links.forEach(l=>l.classList.remove('active'));
+      const match = document.querySelector(`#topnav .navlink[data-target="${e.target.id}"]`);
+      if(match) match.classList.add('active');
+    }
+  });
+},{rootMargin:'-20% 0px -65% 0px'});
+sections.forEach(s=>io.observe(s));
+
+const TOPIC_IDS = ['connect','cursor','execute','fetch','scroll','insert','executemany','search','exceptions','errortypes','finally','summary'];
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  const pct = (h.scrollTop) / (h.scrollHeight - h.clientHeight) * 100;
+  document.getElementById('pageProgress').style.width = pct + '%';
+  document.getElementById('toTop').classList.toggle('show', h.scrollTop > 600);
+});
+
+function copyCode(btn){
+  const pre = btn.closest('.code-card').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    const old = btn.textContent;
+    btn.textContent = 'اتنسخ ✓';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent = old; btn.classList.remove('copied'); }, 1400);
+  }).catch(()=>{
+    btn.textContent = 'مش هيتنسخ 😕';
+    setTimeout(()=>{ btn.textContent = 'نسخ'; }, 1400);
+  });
+}
+
+const doneSet = new Set();
+function updateProgressUI(){
+  const pct = Math.round((doneSet.size / TOPIC_IDS.length) * 100);
+  document.getElementById('sideProgressFill').style.width = pct + '%';
+  document.getElementById('sideProgressText').textContent = pct + '%';
+  document.getElementById('heroProgressFill').style.width = pct + '%';
+  document.getElementById('heroProgressText').textContent = `${doneSet.size} / ${TOPIC_IDS.length} مواضيع خلّصتها`;
+  const ring = document.getElementById('ringFg');
+  if(ring){
+    const circumference = 238.76;
+    ring.style.strokeDashoffset = circumference - (circumference * pct / 100);
+  }
+  TOPIC_IDS.forEach(id=>{
+    const navLink = document.querySelector(`#topnav .navlink[data-target="${id}"]`);
+    if(navLink) navLink.classList.toggle('done', doneSet.has(id));
+  });
+}
+function toggleDone(id, btn){
+  if(doneSet.has(id)){
+    doneSet.delete(id);
+    btn.classList.remove('done');
+    btn.textContent = '✓ علّمت الموضوع ده كمذاكَر';
+  } else {
+    doneSet.add(id);
+    btn.classList.add('done');
+    btn.textContent = '✓ مذاكَر — كليك تاني للإلغاء';
+  }
+  updateProgressUI();
+}
+updateProgressUI();
+
+const QUESTIONS = [
+  {q:"psycopg2.connect() بترجع إيه؟", opts:["نتيجة أول استعلام", "كائن الاتصال (conn) اللي من غيره مينفعش تتعامل مع القاعدة", "cursor جاهز للاستخدام", "لستة بكل الجداول"], a:1, ex:"conn هو كائن الاتصال نفسه — الخط الواصل بين بايثون والسيرفر، ومحتاجه قبل أي عملية تانية."},
+  {q:"إيه اللي بيحصل لو نفّذت execute() من غير أي cursor؟", opts:["هيشتغل عادي", "هيدّي error، لأن execute() ميثود بتاعة cursor مش conn", "هيتصل بقاعدة بيانات تانية", "هيرجع NULL"], a:1, ex:"execute() ميثود موجودة على كائن cursor، ولازم تعمل cursor = conn.cursor() الأول قبل أي استعلام."},
+  {q:"لو الجدول فيه مليون صف وعايز أول 5 بس، إيه الأنسب؟", opts:["fetchall() وبعدين تاخد أول 5 بايثون", "fetchmany(5)", "fetchone() خمس مرات في لوب", "scroll(5)"], a:1, ex:"fetchmany(5) بتجيب أول 5 صفوف بس من السيرفر مباشرة، من غير ما تحمّل مليون صف في الذاكرة زي fetchall()."},
+  {q:"cursor.scroll(2) بتعمل إيه بالظبط؟", opts:["بترجع أول صفين", "بتحرك المؤشر خطوتين قدام من غير ما تقرا أي بيانات", "بتحذف أول صفين", "بتعمل commit للتغييرات"], a:1, ex:"scroll() بتحرك المؤشر بس، من غير قراءة — لازم تستخدم fetch...() بعدها عشان تجيب البيانات فعليًا."},
+  {q:"ليه نستخدم %s بدل f-string في استعلامات فيها مدخلات مستخدم؟", opts:["%s أسرع في الكتابة بس", "بيمنع SQL Injection عن طريق التعامل مع القيمة كنص آمن دايمًا", "f-string مش مدعومة في psycopg2 خالص", "%s بتشتغل بس مع الأرقام"], a:1, ex:"Parameterized Query (%s) بتمنع تفسير أي محتوى خبيث في القيمة كأمر SQL — ده أساسي لو القيمة جاية من مستخدم حقيقي."},
+  {q:"الفرق العملي بين executemany() وexecute() جوه لوب؟", opts:["مفيش فرق خالص في الأداء", "executemany() بتبعت كل الصفوف للسيرفر بأمر واحد بدل رحلات متكررة", "executemany() بس بتشتغل مع UPDATE", "execute() في لوب أسرع دايمًا"], a:1, ex:"executemany() بتقلل عدد الرحلات (round trips) بين بايثون والسيرفر بإرسال كل الصفوف مرة واحدة."},
+  {q:"ليه محتاجين conn.rollback() جوه except عند فشل INSERT؟", opts:["عشان تقفل الاتصال", "عشان تلغي أي تغييرات جزئية حصلت في الـ transaction المفتوحة وترجع الوضع زي ما كان", "عشان تعيد تشغيل السيرفر", "rollback() اختيارية ومالهاش تأثير فعلي"], a:1, ex:"من غير rollback() بعد فشل، الاتصال ممكن يفضل عالق في transaction معلّقة، وده بيأثر على أي عملية تانية على نفس الـ connection."},
+  {q:"ليه except psycopg2.IntegrityError أفضل من except Exception العامة؟", opts:["IntegrityError بتشتغل أسرع", "بتديك تفاصيل دقيقة عن نوع المشكلة (زي duplicate key) بدل ما تمسك أي خطأ عام", "Exception مش موجودة في بايثون 3", "IntegrityError بترجع نتيجة الاستعلام كمان"], a:1, ex:"أنواع الأخطاء المتخصصة بتخليك تتعامل مع كل حالة (duplicate، مشكلة اتصال، إلخ) بطريقة مختلفة ومناسبة لها."},
+  {q:"مشكلة finally: # conn.close() / pass في الكود الأصلي هي إيه؟", opts:["الكود هيدي error عند التشغيل", "الاتصال بيفضل مفتوح دايمًا لحد ما البرنامج يقفل، وده بيراكم اتصالات على السيرفر", "finally مش بتتنفذ خالص في الحالة دي", "pass بتقفل الاتصال تلقائيًا"], a:1, ex:"طالما conn.close() متعملة comment، الاتصال الفعلي بيفضل مفتوح — لو الملف اتشغّل مرات كتير هتتراكم اتصالات غير مقفولة."},
+  {q:"الترتيب الصحيح للمسار الذهبي لأي عملية INSERT ناجحة؟", opts:["execute → rollback → commit", "connect → cursor → execute → commit → (finally) close", "cursor → connect → commit → execute", "commit → execute → connect"], a:1, ex:"المسار الطبيعي: اتصل بالقاعدة، افتح cursor، نفّذ الاستعلام، احفظ بـ commit لو نجح (أو rollback لو فشل)، واقفل الاتصال في النهاية جوه finally."}
+];
+
+const list = document.getElementById('quizList');
+let answered = new Array(QUESTIONS.length).fill(false);
+let score = 0;
+
+function render(){
+  list.innerHTML = '';
+  QUESTIONS.forEach((item, qi)=>{
+    const card = document.createElement('div');
+    card.className = 'qcard';
+    card.innerHTML = `
+      <div class="qtext">${qi+1}. ${item.q}</div>
+      <div class="opts">
+        ${item.opts.map((o,oi)=>`<button class="opt" data-q="${qi}" data-o="${oi}">${o}</button>`).join('')}
+      </div>
+      <div class="explain" id="ex-${qi}">💡 ${item.ex}</div>
+    `;
+    list.appendChild(card);
+  });
+  document.querySelectorAll('.opt').forEach(btn=>{
+    btn.addEventListener('click', onAnswer);
+  });
+  document.getElementById('scoreTotal').textContent = QUESTIONS.length;
+}
+
+function onAnswer(e){
+  const qi = +e.target.dataset.q;
+  const oi = +e.target.dataset.o;
+  if(answered[qi]) return;
+  answered[qi] = true;
+  const item = QUESTIONS[qi];
+  const opts = document.querySelectorAll(`.opt[data-q="${qi}"]`);
+  opts.forEach(b=>b.disabled = true);
+  if(oi === item.a){
+    e.target.classList.add('correct');
+    score++;
+  } else {
+    e.target.classList.add('wrong');
+    opts[item.a].classList.add('correct');
+  }
+  document.getElementById(`ex-${qi}`).style.display = 'block';
+  document.getElementById('scoreVal').textContent = score;
+}
+
+function resetQuiz(){
+  answered = new Array(QUESTIONS.length).fill(false);
+  score = 0;
+  document.getElementById('scoreVal').textContent = 0;
+  render();
+}
+
+render();
+</script>
+</body>
+</html>

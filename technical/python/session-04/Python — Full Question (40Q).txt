@@ -1,0 +1,120 @@
+1. Ask the user to enter 5 numbers. Store the numbers in a list. After that, calculate and print the total sum, the average, the largest number, and the smallest number.
+
+
+2. Ask the user to enter a number N. Use a for loop to print all numbers from 1 to N that are divisible by 3. For example, if N = 10, the output should be: 3, 6, 9.
+
+
+3. Given the list numbers = [10, -5, 0, 20, -8, 15, 0, -2], use a loop and conditions to count how many numbers are positive, how many are negative, and how many are equal to zero.
+
+
+4. Given the list numbers = [10, 20, 30, 40, 50, 60], first calculate the average of the list. Then create a new list containing only the numbers that are greater than the calculated average.
+
+
+5. Ask the user to enter a sentence. Use a loop to count how many vowels (a, e, i, o, u) exist in the sentence. Treat uppercase and lowercase letters as the same.
+
+
+6. Given names = ["Ahmed", "Ali", "Mohamed", "Sara", "Omar", "Ibrahim"], use a loop to print only the names that contain more than 4 characters.
+
+
+7. Given numbers = [10, 45, 23, 89, 67, 12, 89, 34], find the second largest number in the list without using the sort() function.
+
+
+8. Given numbers = [10, 15, 20, 25, 30, 35, 40], use a loop to calculate two separate sums: the sum of all even numbers and the sum of all odd numbers.
+
+
+9. Ask the user to enter a number N. Print the multiplication table of N from 1 to 10, but print only the multiplication results that are even. For example, if N = 5, print 10, 20, 30, 40, and 50.
+
+
+10. Given numbers = [1, 2, 2, 3, 4, 4, 5, 6, 6, 7], create a new collection that contains each number only once. The order does not matter.
+
+
+11. Given list1 = [1, 2, 3, 4, 5] and list2 = [3, 4, 5, 6, 7], create a new list containing only the numbers that exist in both lists. The expected result is [3, 4, 5].
+
+
+12. Given list1 = [1, 2, 3, 4] and list2 = [3, 4, 5, 6], create a new collection containing all unique numbers from both lists. The expected result is {1, 2, 3, 4, 5, 6}.
+
+
+13. Given numbers = [1, 2, 2, 3, 3, 3, 4, 4, 4, 4], use a dictionary to count how many times each number appears. The expected result is {1: 1, 2: 2, 3: 3, 4: 4}.
+
+
+14. Given words = ["cat", "house", "python", "car"], create a dictionary where each word is a key and the length of the word is its value. The expected result is {"cat": 3, "house": 5, "python": 6, "car": 3}.
+
+
+15. Given students = {"Ahmed": 85, "Ali": 55, "Mona": 92, "Sara": 48, "Omar": 70}, use a loop to print only the students who passed. A student passes if the grade is 60 or higher.
+
+
+16. Given students = {"Ahmed": 85, "Ali": 55, "Mona": 92, "Sara": 48, "Omar": 70}, calculate the average grade of all students and print the result.
+
+
+17. Given products = {"Laptop": 15000, "Phone": 10000, "Mouse": 500, "Keyboard": 1000}, find the product with the highest price and print both its name and price. Do not use max() directly on the dictionary.
+
+
+18. Given products = {"Laptop": 15000, "Phone": 10000, "Mouse": 500}, increase every product price by 10%. Update the dictionary with the new prices and print the updated dictionary.
+
+
+19. Create a function called count_even(numbers). The function should receive a list of numbers and return how many even numbers exist in the list. Example: count_even([1, 2, 4, 7, 8]) should return 3.
+
+
+20. Create a function called average_above_50(numbers). The function should receive a list of numbers, calculate the average of only the numbers greater than 50, and return the result. Example: average_above_50([20, 60, 80, 40, 100]) should return 80.
+
+
+21. Create a function called count_vowels(text). The function should receive a string and return the number of vowels (a, e, i, o, u) in it. The function should treat uppercase and lowercase letters as the same.
+
+
+22. Create a function called remove_duplicates(items). The function should receive a list and return a new collection containing each element only once. Example: remove_duplicates([1, 2, 2, 3, 3, 4]) should return [1, 2, 3, 4] or an equivalent collection.
+
+
+23. Create a function called common_elements(list1, list2). The function should receive two lists and return the elements that exist in both lists. Example: common_elements([1, 2, 3], [2, 3, 4]) should return [2, 3].
+
+
+24. Create a function called get_divisors(number). The function should receive a positive integer and return all numbers that divide it without a remainder. Example: get_divisors(12) should return [1, 2, 3, 4, 6, 12].
+
+
+25. Create a function called check_result(grades). The function should receive a list of grades, calculate the average grade, and return "Pass" if the average is 60 or higher. Otherwise, return "Fail".
+
+
+26. Use list comprehension to create a new list containing the squares of all even numbers from 1 to 50. For example, the result should start with [4, 16, 36, 64, ...].
+
+
+27. Given names = ["Ahmed", "Mona", "Ali", "Sara"], use list comprehension to create a new list containing the first letter of each name. The expected result is ["A", "M", "A", "S"].
+
+
+28. Given numbers = range(1, 51), use list comprehension to create a list containing only numbers that are divisible by both 3 and 5.
+
+
+29. Given names = ["Ahmed", "Ali", "Mona", "Adam", "Sara", "Amr"], use list comprehension to create a new list containing only names that start with the letter "A".
+
+
+30. Given sentence = "Python makes programming easier and more fun", split the sentence into words, then use list comprehension to create a list containing the length of each word that has more than 3 characters.
+
+
+31. Create a program that keeps asking the user to enter numbers until the user enters 0. Ignore the 0. After the user finishes, print the largest number, smallest number, and average of all entered numbers. You should use a while loop.
+
+
+32. Create a number guessing game. Store a secret number in a variable, for example 25. Keep asking the user to guess the number until they guess correctly. If the guess is greater than the secret number, print "Too High". If it is smaller, print "Too Low". When the user guesses correctly, print "Correct!" and stop the program.
+
+
+33. Create a menu-driven program using a while loop. The menu should display: 1- Add Number, 2- Show Numbers, 3- Show Sum, 4- Exit. The user can choose an option repeatedly. Add Number should ask for a number and store it in a list. Show Numbers should print all stored numbers. Show Sum should print their total. Exit should stop the program.
+
+
+34. Create a simple shopping cart program. Store available products and their prices in a dictionary. Display the available products to the user. Ask the user to enter product names and add the selected products to a cart until the user enters "done". At the end, print all selected products and the total price. If the user enters a product that does not exist, print an error message.
+
+
+35. Create a login system using a dictionary that contains usernames and passwords. Ask the user to enter a username and password. The user has only 3 attempts to enter valid information. If the login is correct, print "Login Successful" and stop. If all 3 attempts are wrong, print "Account Locked".
+
+
+36. Ask the user to enter a sentence. Create a dictionary where each word is a key and the number of times that word appears is the value. Example: if the user enters "python is easy and python is powerful", the dictionary should count python twice and is twice.
+
+
+37. Given students = {"Ahmed": [80, 90, 70], "Ali": [60, 75, 80], "Mona": [95, 90, 100]}, calculate the average grade for every student.
+ Print each student's name and average, then print the name of the student with the highest average.
+
+
+38. Given transactions = [100, -50, 200, -30, -20, 500], treat positive numbers as deposits and negative numbers as withdrawals. Calculate and print the final balance, total deposited amount, and total withdrawn amount. For this example, the final balance should be 700.
+
+
+39. Create a simple ATM program using a while loop. Start with a balance of 5000. Display a menu with: 1- Deposit, 2- Withdraw, 3- Check Balance, 4- Exit. Deposit should increase the balance, Withdraw should decrease it only if there is enough money, Check Balance should display the current balance, and Exit should stop the program.
+
+
+40. Create a Student Management System using a dictionary. Each student should have a list of grades. Create a menu using while that allows the user to: Add Student, Add Grade, Show Student Average, Show All Students, Find the Top Student, and Exit. Organize the program using functions, and use lists, dictionaries, loops, conditions, and list comprehension where they are useful.
+

@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session · Web Scraping · Requests & BeautifulSoup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #081420;
+    --bg-soft: #0d1e2c;
+    --panel: #102839;
+    --line: #1c3a50;
+    --ink: #e9f6fb;
+    --ink-dim: #86adc4;
+    --cyan: #5eead4;
+    --cyan-dim: #2aa899;
+    --amber: #fbbf24;
+    --amber-dim: #c98f13;
+    --coral: #fb7185;
+    --green: #7fd9a8;
+    --code-bg: #071119;
+    --radius: 16px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1200px 560px at 88% -8%, rgba(94,234,212,.10), transparent 60%),
+      radial-gradient(900px 500px at -5% 15%, rgba(251,191,36,.09), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Cairo',sans-serif;
+    line-height:1.75;
+  }
+  code, .mono{font-family:'JetBrains Mono',monospace;}
+  ::selection{background:rgba(94,234,212,.28); color:#fff;}
+
+  #pageProgress{
+    position:fixed; top:0; left:0; height:3px; width:0%;
+    background:linear-gradient(90deg, var(--cyan), var(--amber));
+    z-index:999; transition:width .1s linear;
+  }
+
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg-soft);}
+  ::-webkit-scrollbar-thumb{background:linear-gradient(var(--cyan-dim), var(--amber-dim)); border-radius:10px;}
+
+  .shell{display:grid; grid-template-columns: 270px 1fr; min-height:100vh;}
+  @media (max-width: 880px){ .shell{grid-template-columns: 1fr;} .side{position:static; height:auto;} }
+
+  .side{
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    background:linear-gradient(180deg, var(--bg-soft), var(--bg));
+    padding:28px 18px;
+  }
+  .side{position:relative;}
+  .side::after{
+    content:""; position:absolute; top:0; bottom:0; left:0; width:3px;
+    background:linear-gradient(180deg, var(--cyan), var(--amber) 55%, var(--coral));
+    box-shadow:0 0 14px rgba(94,234,212,.35);
+  }
+  @media (max-width: 880px){ .side::after{display:none;} }
+
+  .brand{display:flex; align-items:center; gap:11px; margin-bottom:8px; padding:0 6px;}
+  .brand .dot{
+    width:13px;height:13px;border-radius:4px;
+    background:linear-gradient(135deg, var(--cyan), var(--amber));
+    box-shadow:0 0 16px rgba(94,234,212,.55);
+  }
+  .brand b{font-size:15.5px; letter-spacing:.3px;}
+  .brand span{display:block; font-size:11px; color:var(--ink-dim);}
+
+  .supervisor{
+    margin:0 6px 14px; padding:11px 13px;
+    border:1px solid rgba(94,234,212,.28); border-radius:12px;
+    background:linear-gradient(135deg, rgba(94,234,212,.09), rgba(251,191,36,.06));
+    font-size:11.5px; color:var(--ink-dim); line-height:1.6;
+  }
+  .supervisor b{color:var(--cyan); display:block; font-size:12.5px; margin-bottom:2px; font-weight:800;}
+
+  .side-progress{margin:0 6px 20px; padding:12px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel);}
+  .side-progress .lbl{display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink-dim); margin-bottom:8px; font-family:'JetBrains Mono',monospace;}
+  .side-progress .lbl b{color:var(--cyan); font-weight:700;}
+  .track{height:7px; border-radius:20px; background:var(--code-bg); overflow:hidden; border:1px solid var(--line);}
+  .fill{height:100%; width:0%; border-radius:20px; background:linear-gradient(90deg, var(--cyan), var(--amber)); transition:width .35s ease;}
+
+  nav .navlink{
+    display:flex; align-items:center; gap:10px; width:100%;
+    padding:9.5px 11px; border-radius:10px; color:var(--ink-dim);
+    text-decoration:none; font-size:14px; margin-bottom:2px;
+    border:1px solid transparent; transition:.2s ease;
+    position:relative; background:none; font-family:'Cairo',sans-serif;
+    cursor:pointer; text-align:right;
+  }
+  nav .navlink .n{
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--amber);
+    width:22px; text-align:center;
+  }
+  nav .navlink:hover{background:var(--panel); color:var(--ink); transform:translateX(-2px);}
+  nav .navlink.active{
+    background:linear-gradient(90deg, rgba(94,234,212,.14), rgba(251,191,36,.08));
+    border-color:rgba(94,234,212,.35); color:var(--cyan);
+  }
+  nav .navlink.active .n{color:var(--cyan);}
+  nav .navlink .check{margin-right:auto; font-size:12px; color:var(--green); opacity:0; transition:.2s;}
+  nav .navlink.done .check{opacity:1;}
+  .nav-quiz{margin-top:16px; padding-top:16px; border-top:1px dashed var(--line);}
+
+  main{padding:46px clamp(20px,4vw,68px) 90px;}
+  .hero{
+    background:linear-gradient(155deg, var(--panel), var(--bg-soft) 70%);
+    border:1px solid var(--line); border-radius:22px;
+    padding:38px clamp(22px,4vw,48px); margin-bottom:42px; position:relative; overflow:hidden;
+    box-shadow:0 30px 60px -30px rgba(0,0,0,.6);
+  }
+  .hero::before{
+    content:""; position:absolute; inset:0; border-radius:22px; padding:1px;
+    background:linear-gradient(120deg, rgba(94,234,212,.5), transparent 30%, transparent 70%, rgba(251,191,36,.5));
+    -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+  }
+  .hero::after{
+    content:"soup.find_all('a')"; position:absolute; left:-14px; bottom:-16px;
+    font-family:'JetBrains Mono',monospace; font-size:42px; color:rgba(94,234,212,.055);
+    letter-spacing:1px; pointer-events:none;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:1.5px;
+    background:linear-gradient(90deg, var(--cyan), var(--amber));
+    -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:700;
+  }
+  .hero h1{font-size:clamp(27px,4vw,40px); margin:11px 0 9px; font-weight:900;}
+  .hero p{color:var(--ink-dim); max-width:640px; margin:0; font-size:15px;}
+  .hero-tags{display:flex; flex-wrap:wrap; gap:9px; margin-top:22px;}
+  .tag{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-dim);
+    border:1px solid var(--line); padding:6px 12px; border-radius:20px; background:var(--code-bg);
+    transition:.2s;
+  }
+  .tag:hover{border-color:rgba(94,234,212,.4); color:var(--cyan);}
+
+  .hero-progress{margin-top:24px; display:flex; align-items:center; gap:14px;}
+  .hero-progress .track{flex:1; height:9px;}
+  .hero-progress span{font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--cyan); white-space:nowrap;}
+
+  section.topic{
+    border-top:1px solid var(--line); padding-top:36px; margin-top:36px; scroll-margin-top:24px;
+    opacity:0; transform:translateY(14px); transition:opacity .55s ease, transform .55s ease;
+  }
+  section.topic.revealed{opacity:1; transform:translateY(0);}
+  section.topic .kicker{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
+  section.topic .kicker .idx{
+    font-family:'JetBrains Mono',monospace; color:var(--cyan); font-size:13px;
+    border:1px solid var(--cyan-dim); border-radius:9px; padding:2px 10px;
+    background:rgba(94,234,212,.06);
+  }
+  section.topic h2{font-size:24.5px; margin:7px 0 12px; font-weight:800;}
+  section.topic .lead{color:var(--ink-dim); max-width:780px; margin-bottom:19px; font-size:15px;}
+
+  .grid2{display:grid; grid-template-columns: 1.1fr .9fr; gap:18px; align-items:start;}
+  @media (max-width:760px){.grid2{grid-template-columns:1fr;}}
+
+  .code-card{
+    background:var(--code-bg); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden; transition:.25s ease; position:relative;
+  }
+  .code-card:hover{border-color:rgba(251,191,36,.4); box-shadow:0 14px 34px -18px rgba(251,191,36,.3);}
+  .code-card .bar{
+    display:flex; align-items:center; gap:7px; padding:10px 14px; border-bottom:1px solid var(--line);
+    background:#0a1622;
+  }
+  .code-card .bar i{width:9px;height:9px;border-radius:50%;background:#274357;}
+  .code-card .bar span{margin-right:auto; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim);}
+  .copy-btn{
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 9px; border-radius:7px;
+    cursor:pointer; transition:.2s;
+  }
+  .copy-btn:hover{border-color:var(--cyan); color:var(--cyan);}
+  .copy-btn.copied{border-color:var(--green); color:var(--green);}
+  .code-card pre{
+    margin:0; padding:17px; direction:ltr; text-align:left; overflow-x:auto;
+    font-family:'JetBrains Mono',monospace; font-size:13.2px; color:#dff2ee; line-height:1.68;
+  }
+  .code-card pre .c{color:#5b7c8f;}
+  .code-card pre .k{color:var(--coral);}
+  .code-card pre .s{color:var(--amber);}
+  .code-card pre .f{color:var(--cyan);}
+
+  .out-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;
+    transition:.25s ease;
+  }
+  .out-card:hover{border-color:rgba(94,234,212,.35);}
+  .out-card .bar{padding:10px 14px; border-bottom:1px solid var(--line); font-size:11.5px; color:var(--cyan); font-family:'JetBrains Mono',monospace;}
+  .out-card pre{margin:0; padding:17px; direction:ltr; text-align:left; font-family:'JetBrains Mono',monospace; font-size:12.6px; color:#cfe9e2; white-space:pre-wrap; word-break:break-word;}
+
+  .note{
+    margin-top:15px; padding:13px 17px; border-radius:11px;
+    background:rgba(251,191,36,.08); border:1px solid rgba(251,191,36,.28);
+    font-size:13.5px; color:#f4dfa3;
+  }
+  .note b{color:var(--amber);}
+  .try{
+    margin-top:15px; padding:15px 17px; border-radius:11px;
+    background:rgba(94,234,212,.08); border:1px dashed rgba(94,234,212,.4);
+    font-size:14px;
+  }
+  .try b{color:var(--cyan);}
+
+  .mark-row{display:flex; justify-content:flex-end; margin-top:18px;}
+  .mark-btn{
+    background:var(--code-bg); border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'Cairo',sans-serif; font-size:13px; font-weight:700; padding:9px 16px;
+    border-radius:10px; cursor:pointer; transition:.2s; display:flex; align-items:center; gap:7px;
+  }
+  .mark-btn:hover{border-color:var(--cyan-dim); color:var(--ink);}
+  .mark-btn.done{border-color:var(--green); color:var(--green); background:rgba(127,217,168,.08);}
+
+  #quiz{border-top:1px solid var(--line); padding-top:36px; margin-top:52px;}
+  .qcard{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:21px 23px; margin-bottom:16px; transition:.2s;
+  }
+  .qcard:hover{border-color:rgba(94,234,212,.25);}
+  .qcard .qtext{font-weight:700; margin-bottom:14px; font-size:15.5px;}
+  .qcard .opts{display:grid; gap:9px;}
+  .opt{
+    display:block; width:100%; text-align:right; cursor:pointer;
+    background:var(--code-bg); border:1px solid var(--line); color:var(--ink);
+    padding:11px 15px; border-radius:10px; font-family:'Cairo',sans-serif; font-size:14px;
+    transition:.15s;
+  }
+  .opt:hover{border-color:var(--cyan-dim);}
+  .opt.correct{border-color:var(--cyan); background:rgba(94,234,212,.14); color:var(--cyan);}
+  .opt.wrong{border-color:var(--coral); background:rgba(251,113,133,.12); color:var(--coral);}
+  .opt[disabled]{cursor:default;}
+  .explain{display:none; margin-top:12px; font-size:13.5px; color:var(--ink-dim); border-top:1px dashed var(--line); padding-top:10px;}
+
+  .quiz-summary{
+    background:linear-gradient(155deg, var(--panel), var(--bg-soft));
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:23px; text-align:center; margin-bottom:20px;
+  }
+  .quiz-summary .score{
+    font-family:'JetBrains Mono',monospace; font-size:36px; font-weight:700;
+    background:linear-gradient(90deg, var(--cyan), var(--amber));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .reset-btn{
+    margin-top:11px; background:linear-gradient(90deg, var(--cyan), #99f3e3); color:#062019; border:none; font-weight:700;
+    padding:10px 22px; border-radius:10px; cursor:pointer; font-family:'Cairo',sans-serif; font-size:14px;
+    transition:.2s;
+  }
+  .reset-btn:hover{transform:translateY(-1px); box-shadow:0 10px 22px -10px rgba(94,234,212,.5);}
+
+  #toTop{
+    position:fixed; bottom:22px; left:22px; width:42px; height:42px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--line); color:var(--cyan); font-size:18px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    opacity:0; pointer-events:none; transition:.25s; z-index:998;
+  }
+  #toTop.show{opacity:1; pointer-events:auto;}
+  #toTop:hover{border-color:var(--cyan);}
+
+  footer{text-align:center; color:var(--ink-dim); font-size:12.5px; padding:34px 0 10px;}
+  footer .sup{display:block; margin-top:6px; color:var(--amber-dim); font-family:'JetBrains Mono',monospace; font-size:11.5px;}
+</style>
+</head>
+<body>
+<div id="pageProgress"></div>
+<div class="shell">
+
+  <aside class="side">
+    <div class="brand"><div class="dot"></div><div><b>Web Scraping</b><span>Requests · BeautifulSoup · Pandas</span></div></div>
+    <div class="supervisor"><b>Instructor</b>Eng. Ahmed Salim<br><b style="margin-top:6px;">Guide by</b>Mohamed Mahmoud Salama</div>
+    <div class="side-progress">
+      <div class="lbl"><span>تقدّمك في المذاكرة</span><b id="sideProgressText">0%</b></div>
+      <div class="track"><div class="fill" id="sideProgressFill"></div></div>
+    </div>
+    <nav id="topnav">
+      <button type="button" class="navlink" data-target="requests-intro"><span class="n">01</span> Requests<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="bsoup-intro"><span class="n">02</span> BeautifulSoup<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="get-text"><span class="n">03</span> get_text()<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="find"><span class="n">04</span> find()<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="find-all"><span class="n">05</span> find_all()<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="clean"><span class="n">06</span> تنظيف النصوص<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="pandas"><span class="n">07</span> pandas DataFrame<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="product-pod"><span class="n">08</span> بطاقة المنتج<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="extract-func"><span class="n">09</span> دالة الاستخراج<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="final-table"><span class="n">10</span> الجدول النهائي<span class="check">✓</span></button>
+      <div class="nav-quiz">
+        <button type="button" class="navlink" data-target="quiz">🧠 اختبر نفسك (كويز)</button>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="hero">
+      <div class="eyebrow">SESSION · PYTHON</div>
+      <h1>Web Scraping — استخراج البيانات من صفحات الويب</h1>
+      <p>مرجع مذاكرة تفاعلي مبني على أمثلة الجلسة نفسها (موقع books.toscrape.com كمثال حي) — كل نقطة فيها شرح مبسط، الكود زي ما اتكتب في المحاضرة، والناتج الفعلي جنبه. Course by Eng. Ahmed Salim · Study guide compiled by Mohamed Mahmoud Salama.</p>
+      <div class="hero-tags">
+        <span class="tag">requests</span><span class="tag">BeautifulSoup</span><span class="tag">html.parser</span>
+        <span class="tag">find()</span><span class="tag">find_all()</span><span class="tag">get_text()</span>
+        <span class="tag">lambda</span><span class="tag">map()</span><span class="tag">pandas DataFrame</span>
+      </div>
+      <div class="hero-progress">
+        <div class="track"><div class="fill" id="heroProgressFill"></div></div>
+        <span id="heroProgressText">0 / 10 مواضيع خلّصتها</span>
+      </div>
+    </div>
+
+    <!-- 01 REQUESTS -->
+    <section class="topic" id="requests-intro">
+      <div class="kicker"><span class="idx">01</span></div>
+      <h2>Requests — طلب صفحة ويب</h2>
+      <p class="lead">مكتبة <code>requests</code> هي أداة بايثون اللي بتخليك "تطلب" أي صفحة ويب زي ما المتصفح بيعمل بالظبط، وترجّعلك المحتوى (HTML) عشان تشتغل عليه. أول خطوة في أي سكريبت scraping.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>get_page.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">import</span> requests
+
+url = <span class="s">"https://books.toscrape.com/catalogue/page-1.html"</span>
+response = requests.get(url)
+response</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>&lt;Response [200]&gt;</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>status_code.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>response.status_code</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>200</pre></div>
+      </div>
+      <div class="note"><b>200 يعني إيه؟</b> ده HTTP status code بيقول إن الطلب نجح والصفحة اتجابت بنجاح. أي رقم من نوع 4xx (زي 404) أو 5xx معناه فيه مشكلة — الصفحة مش موجودة أو السيرفر عنده خطأ.</div>
+      <div class="try"><b>جرب بنفسك:</b> <code>print(response.text)</code> بتطبعلك كل كود الـ HTML الخام للصفحة كـ string واحد طويل — ده اللي هنبدأ نحلله في الموضوع الجاي.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('requests-intro', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 02 BEAUTIFULSOUP -->
+    <section class="topic" id="bsoup-intro">
+      <div class="kicker"><span class="idx">02</span></div>
+      <h2>BeautifulSoup — تحويل النص لكائن قابل للتحليل</h2>
+      <p class="lead"><code>response.text</code> مجرد نص طويل عادي — مش عارف تدوّر فيه بسهولة. <code>BeautifulSoup</code> بتحوّله لكائن (object) منظّم بشكل شجري، تقدر تتنقل فيه وتدوّر بالتاج أو الكلاس أو أي خاصية تانية.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>make_soup.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">from</span> bs4 <span class="k">import</span> BeautifulSoup
+
+soup = BeautifulSoup(response.text, <span class="s">'html.parser'</span>)</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>prettify.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="f">print</span>(soup.prettify())</pre>
+        </div>
+      </div>
+      <div class="out-card" style="margin-top:16px;"><div class="bar">▸ Output (جزء من الناتج)</div><pre>&lt;!DOCTYPE html&gt;
+&lt;html class="no-js" lang="en-us"&gt;
+ &lt;head&gt;
+  &lt;title&gt;
+   All products | Books to Scrape - Sandbox
+  &lt;/title&gt;
+  ...
+ &lt;/head&gt;
+ &lt;body class="default" id="default"&gt;
+  &lt;header class="header container-fluid"&gt;
+   &lt;div class="page_inner"&gt;
+   ...</pre></div>
+      <div class="note"><b>ليه 'html.parser'؟</b> ده اسم "المحلّل" (parser) اللي BeautifulSoup هيستخدمه عشان يفهم بنية الـ HTML. <code>html.parser</code> مدمج جوه بايثون نفسها ومش محتاج تنصيب إضافي، وده كافي لمعظم الاستخدامات.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('bsoup-intro', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 03 GET_TEXT -->
+    <section class="topic" id="get-text">
+      <div class="kicker"><span class="idx">03</span></div>
+      <h2>get_text() — استخراج النص من أي عنصر</h2>
+      <p class="lead">أي عنصر HTML لما تجيبه بـ BeautifulSoup بيكون فيه التاجات نفسها كمان، مش بس النص. <code>get_text()</code> بتشيل كل التاجات وتديك النص الصافي بس اللي المستخدم شايفه في المتصفح.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>title_raw.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="f">print</span>(soup.title.get_text())</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>
+
+    All products | Books to Scrape - Sandbox
+
+</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>title_strip.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="f">print</span>(soup.title.get_text(strip=<span class="k">True</span>))</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>All products | Books to Scrape - Sandbox</pre></div>
+      </div>
+      <div class="note"><b>خطر شائع:</b> لاحظ الفرق — النسخة من غير <code>strip=True</code> فيها أسطر فاضية ومسافات زيادة (زي ما HTML بيكون متعمّل indent في السورس)، والنسخة التانية نضيفة تمامًا. دايمًا استخدم <code>strip=True</code> إلا لو محتاج المسافات لسبب معين.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('get-text', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 04 FIND -->
+    <section class="topic" id="find">
+      <div class="kicker"><span class="idx">04</span></div>
+      <h2>find() — البحث عن أول عنصر مطابق</h2>
+      <p class="lead"><code>soup.find('tag')</code> بيدوّر في الصفحة كلها ويرجّعلك <b>أول عنصر بس</b> بيطابق التاج اللي طلبته. لو التاج له اسم فريد (زي header)، تقدر كمان توصله بالاختصار <code>soup.header</code>.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>shortcut_access.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>soup.header</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>&lt;header class="header container-fluid"&gt;
+&lt;div class="page_inner"&gt;
+&lt;div class="row"&gt;
+&lt;div class="col-sm-8 h1"&gt;&lt;a href="../index.html"&gt;
+Books to Scrape&lt;/a&gt;&lt;small&gt; We love
+being scraped!&lt;/small&gt;
+&lt;/div&gt;&lt;/div&gt;&lt;/div&gt;&lt;/header&gt;</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>find_first_div.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="f">print</span>(soup.find(<span class="s">'div'</span>).get_text(strip=<span class="k">True</span>))</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>'Books to ScrapeWe love being scraped!'</pre></div>
+      </div>
+      <div class="note"><b>لاحظ:</b> الصفحة فيها عشرات الـ <code>div</code>، بس <code>find('div')</code> رجّعلك <b>أول واحد بس</b> — اللي هو أعلى div في الصفحة. لو عايز كل الـ divs، محتاج <code>find_all()</code> (الموضوع الجاي).</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('find', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 05 FIND_ALL -->
+    <section class="topic" id="find-all">
+      <div class="kicker"><span class="idx">05</span></div>
+      <h2>find_all() — البحث عن كل العناصر المطابقة</h2>
+      <p class="lead"><code>find_all('tag')</code> بترجّع <b>لستة (list)</b> فيها كل العناصر اللي بتطابق التاج، مش عنصر واحد بس. حتى لو لقيت عنصر واحد بس مطابق، برضو بترجعه جوه لستة.</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>find_all_divs.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre>soup.find_all(<span class="s">'div'</span>)</pre>
+      </div>
+      <div class="out-card" style="margin-top:14px;"><div class="bar">▸ Output (جزء من الناتج)</div><pre>[&lt;div class="page_inner"&gt;...&lt;/div&gt;,
+ &lt;div class="row"&gt;...&lt;/div&gt;,
+ &lt;div class="col-sm-8 h1"&gt;...&lt;/div&gt;,
+ &lt;div class="container-fluid page"&gt;...&lt;/div&gt;,
+ &lt;div class="page_inner"&gt;...&lt;/div&gt;,
+ &lt;div class="row"&gt;...&lt;/div&gt;,
+ &lt;aside class="sidebar col-sm-4 col-md-3"&gt;...
+ ... (عشرات العناصر)]</pre></div>
+      <div class="note"><b>القاعدة الذهبية:</b> <code>find()</code> = عنصر واحد أو <code>None</code>. <code>find_all()</code> = لستة (ممكن تكون فاضية <code>[]</code> لو مفيش تطابق، بس مش هتدّيك error). استخدم <code>find</code> لما تكون متأكد إن العنصر واحد بس (زي title)، و<code>find_all</code> لما تعرف إن فيه أكتر من واحد (زي كل بطاقات الكتب في صفحة).</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('find-all', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 06 CLEAN TEXT -->
+    <section class="topic" id="clean">
+      <div class="kicker"><span class="idx">06</span></div>
+      <h2>البحث بالـ class وتنظيف نصوص متعددة</h2>
+      <p class="lead">تقدر تضيف <code>class_='...'</code> لأي <code>find</code> أو <code>find_all</code> عشان تحدد العنصر بدقة أكتر. ولو عندك لستة عناصر وعايز تنضّف نص كل واحد فيهم، تقدر تستخدم <b>list comprehension</b> أو <b>map + lambda</b>.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>find_by_class.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>side_categories = soup.find(<span class="s">'div'</span>, class_=<span class="s">'side_categories'</span>).find_all(<span class="s">'a'</span>)
+
+<span class="f">print</span>(side_categories[<span class="s">0</span>].get_text(strip=<span class="k">True</span>))</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>Books</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>list_comprehension.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c"># من غير strip=True — النص متسخ بمسافات وأسطر</span>
+res = [i.get_text() <span class="k">for</span> i <span class="k">in</span> side_categories]</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>['\n    \n  Books\n    \n  ',
+ '\n    \n  Travel\n    \n  ',
+ '\n    \n  Mystery\n    \n  ',
+ ... (51 عنصر، كلهم فيهم مسافات زيادة)]</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>map_lambda_clean.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="f">list</span>(<span class="f">map</span>(<span class="k">lambda</span> i: i.strip(), res))</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>['Books', 'Travel', 'Mystery',
+ 'Historical Fiction', 'Sequential Art',
+ 'Classics', 'Philosophy', 'Romance', ...
+ 'Erotica', 'Crime']  <span style="color:#5b7c8f"># 51 تصنيف، نضاف تمامًا</span></pre></div>
+      </div>
+      <div class="note"><b>ليه محتجنا الخطوتين؟</b> <code>get_text()</code> من غير <code>strip=True</code> بتسيب المسافات، وهي كانت لازمة هنا عشان جبنا النص من عدة عناصر دفعة واحدة (list comprehension مش بتقبل باراميتر جوه العملية نفسها بسهولة زي الميثود). فبنجيب النص الخام الأول، وبعدين ننضّفه بـ <code>map(lambda i: i.strip(), res)</code> كخطوة تانية.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('clean', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 07 PANDAS -->
+    <section class="topic" id="pandas">
+      <div class="kicker"><span class="idx">07</span></div>
+      <h2>تحويل النتائج لجدول — pandas DataFrame</h2>
+      <p class="lead">اللستات مفيدة، بس لو عايز تشوف بياناتك متظبطة في شكل جدول (زي Excel)، وتضيف أعمدة وتحذف تانية بسهولة، بتستخدم <code>pandas.DataFrame</code>.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>make_df.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">import</span> pandas <span class="k">as</span> pd
+df = pd.DataFrame(res)   <span class="c"># res هي اللستة الوسخة من قبل</span>
+
+df[<span class="s">0</span>][<span class="s">0</span>]</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>'\n    \n  Books\n    \n  '</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>clean_column.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>df[<span class="s">"side_categories"</span>] = df[<span class="s">0</span>].map(<span class="k">lambda</span> i: i.strip())
+df.drop(columns=[<span class="s">0</span>], inplace=<span class="k">True</span>)
+df</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>       side_categories
+0                Books
+1               Travel
+2              Mystery
+3   Historical Fiction
+4       Sequential Art
+...                ...
+50               Crime
+
+[51 rows x 1 columns]</pre></div>
+      </div>
+      <div class="note"><b>df["col"].map() زي map() العادية بالظبط:</b> بتطبّق الدالة اللي جوّاها (هنا <code>lambda i: i.strip()</code>) على كل قيمة في العمود، صف بصف. وبعدها <code>drop(columns=[0], inplace=True)</code> بتشيل العمود القديم الوسخ، وتسيب بس العمود النضيف الجديد.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('pandas', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 08 PRODUCT POD -->
+    <section class="topic" id="product-pod">
+      <div class="kicker"><span class="idx">08</span></div>
+      <h2>استهداف بطاقة المنتج (article.product_pod)</h2>
+      <p class="lead">كل كتاب في صفحة books.toscrape.com محاط بتاج <code>&lt;article class="product_pod"&gt;</code>. أول خطوة في أي استخراج منتجات: نلاقي كل الـ articles دي، وبعدين نستخرج من كل واحدة اسم الكتاب وسعره وحالة توفره.</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>get_books.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre>books = soup.find_all(<span class="s">'article'</span>, class_=<span class="s">'product_pod'</span>)
+books[<span class="s">0</span>]</pre>
+      </div>
+      <div class="out-card" style="margin-top:14px;"><div class="bar">▸ Output</div><pre>&lt;article class="product_pod"&gt;
+&lt;div class="image_container"&gt;
+&lt;a href="a-light-in-the-attic_1000/index.html"&gt;
+&lt;img alt="A Light in the Attic" ... /&gt;&lt;/a&gt;
+&lt;/div&gt;
+&lt;p class="star-rating Three"&gt;...&lt;/p&gt;
+&lt;h3&gt;&lt;a href="..." title="A Light in the Attic"&gt;
+A Light in the ...&lt;/a&gt;&lt;/h3&gt;
+&lt;div class="product_price"&gt;
+&lt;p class="price_color"&gt;£51.77&lt;/p&gt;
+&lt;p class="instock availability"&gt;
+&lt;i class="icon-ok"&gt;&lt;/i&gt; In stock &lt;/p&gt;
+&lt;form&gt;&lt;button ...&gt;Add to basket&lt;/button&gt;&lt;/form&gt;
+&lt;/div&gt;&lt;/article&gt;</pre></div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>extract_fields.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>books[<span class="s">0</span>].find(<span class="s">'h3'</span>).get_text()
+books[<span class="s">0</span>].find(<span class="s">'p'</span>, class_=<span class="s">'price_color'</span>).get_text()
+books[<span class="s">0</span>].find(<span class="s">'p'</span>, class_=<span class="s">'instock availability'</span>).get_text(strip=<span class="k">True</span>)</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>'A Light in the ...'
+'Â£51.77'
+'In stock'</pre></div>
+      </div>
+      <div class="note"><b>خطر شائع:</b> اسم الكلاس <code>"instock availability"</code> فيه مسافة جوّاه، ولازم تكتبه بالظبط كـ string واحد زي ما هو مكتوب جوه الـ HTML — مش تعتبره كلاسين منفصلين. كمان لاحظ <code>Â£51.77</code> بدل <code>£51.77</code> — ده مشكلة ترميز (encoding) شائعة في السكرابينج، وبتتصلّح غالبًا بضبط الـ encoding عند قراءة الصفحة.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('product-pod', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 09 EXTRACT FUNC -->
+    <section class="topic" id="extract-func">
+      <div class="kicker"><span class="idx">09</span></div>
+      <h2>تجميع الاستخراج في دالة واحدة</h2>
+      <p class="lead">بدل ما نكرر نفس أسطر الاستخراج لكل كتاب لوحده، بنعمل دالة توحّد العملية على كل الكتب مرة واحدة، وترجّع 3 لستات (اسم، سعر، توفر) بنفس فكرة الـ <code>return</code> المتعدد اللي اتعلمناها قبل كده.</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>extract_book_info.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre><span class="k">def</span> extract_book_info(listofbooks):
+    book_name = []
+    price = []
+    availability = []
+    <span class="k">for</span> book <span class="k">in</span> listofbooks:
+        book_name.append(book.find(<span class="s">'h3'</span>).get_text())
+        price.append(book.find(<span class="s">'p'</span>, class_=<span class="s">'price_color'</span>).get_text())
+        availability.append(
+            book.find(<span class="s">'p'</span>, class_=<span class="s">'instock availability'</span>).get_text(strip=<span class="k">True</span>)
+        )
+    <span class="k">return</span> book_name, price, availability
+
+book_name, price, availability = extract_book_info(books)</pre>
+      </div>
+      <div class="note"><b>تصغير الدالة (زي ما اتعلمنا قبل كده):</b> الدالة دي بتاخد أي لستة كتب (مش بس الصفحة دي) وترجّع 3 لستات جاهزة. ده معناه تقدر تنادي نفس الدالة على أي صفحة تانية من books.toscrape.com من غير ما تكرر كود.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('extract-func', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 10 FINAL TABLE -->
+    <section class="topic" id="final-table">
+      <div class="kicker"><span class="idx">10</span></div>
+      <h2>تجميع الناتج في جدول نهائي</h2>
+      <p class="lead">آخر خطوة: نجمع الـ 3 لستات اللي رجعتهم الدالة في <code>DataFrame</code> واحد، وكل عمود بيبقى ليه اسمه الخاص — كده البيانات جاهزة للتحليل أو الحفظ في ملف Excel/CSV.</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>final_dataframe.py</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre>pd.DataFrame({
+    <span class="s">'book_name'</span>: book_name,
+    <span class="s">'price'</span>: price,
+    <span class="s">'availability'</span>: availability
+})</pre>
+      </div>
+      <div class="out-card" style="margin-top:14px;"><div class="bar">▸ Output</div><pre>                         book_name    price availability
+0               A Light in the ...  Â£51.77     In stock
+1               Tipping the Velvet  Â£53.74     In stock
+2                       Soumission  Â£50.10     In stock
+3                    Sharp Objects  Â£47.82     In stock
+4     Sapiens: A Brief History ...  Â£54.23     In stock
+...                            ...      ...          ...
+19          It's Only the Himalayas  Â£45.17     In stock
+
+[20 rows x 3 columns]</pre></div>
+      <div class="note"><b>ملخّص الرحلة كاملة:</b> requests جابت الصفحة الخام → BeautifulSoup حوّلتها لكائن قابل للبحث → find/find_all حددوا العناصر المطلوبة → get_text نظّفت النصوص → ودالة extract_book_info + pandas جمّعوا كل حاجة في جدول واحد نضيف وجاهز للاستخدام.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('final-table', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- QUIZ -->
+    <section id="quiz">
+      <div class="kicker"><span class="idx">🧠</span></div>
+      <h2>اختبر نفسك</h2>
+      <p class="lead">10 أسئلة على كل الجلسة — اختار إجابة وهيبان لك صح ولا غلط مع شرح سريع.</p>
+
+      <div class="quiz-summary">
+        <div>النتيجة</div>
+        <div class="score"><span id="scoreVal">0</span> / <span id="scoreTotal">10</span></div>
+        <button class="reset-btn" onclick="resetQuiz()">إعادة المحاولة</button>
+      </div>
+
+      <div id="quizList"></div>
+    </section>
+
+    <footer>Web Scraping Session · Requests, BeautifulSoup &amp; pandas — مرجع مذاكرة للطلاب<span class="sup">Course by Eng. Ahmed Salim · Guide by Mohamed Mahmoud Salama</span></footer>
+  </main>
+</div>
+
+<button id="toTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="ارجع لفوق">↑</button>
+
+<script>
+// sidebar nav: plain buttons (not <a href>) that scroll to their section —
+document.querySelectorAll('.navlink[data-target]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const target = document.getElementById(btn.dataset.target);
+    if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+});
+
+const links = document.querySelectorAll('#topnav .navlink[data-target]');
+const sections = [...document.querySelectorAll('section.topic, #quiz')];
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('revealed');
+      links.forEach(l=>l.classList.remove('active'));
+      const match = document.querySelector(`#topnav .navlink[data-target="${e.target.id}"]`);
+      if(match) match.classList.add('active');
+    }
+  });
+},{rootMargin:'-20% 0px -65% 0px'});
+sections.forEach(s=>io.observe(s));
+
+const TOPIC_IDS = ['requests-intro','bsoup-intro','get-text','find','find-all','clean','pandas','product-pod','extract-func','final-table'];
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  const pct = (h.scrollTop) / (h.scrollHeight - h.clientHeight) * 100;
+  document.getElementById('pageProgress').style.width = pct + '%';
+  document.getElementById('toTop').classList.toggle('show', h.scrollTop > 600);
+});
+
+function copyCode(btn){
+  const pre = btn.closest('.code-card').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    const old = btn.textContent;
+    btn.textContent = 'اتنسخ ✓';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent = old; btn.classList.remove('copied'); }, 1400);
+  }).catch(()=>{
+    btn.textContent = 'مش هيتنسخ 😕';
+    setTimeout(()=>{ btn.textContent = 'نسخ'; }, 1400);
+  });
+}
+
+const doneSet = new Set();
+function updateProgressUI(){
+  const pct = Math.round((doneSet.size / TOPIC_IDS.length) * 100);
+  document.getElementById('sideProgressFill').style.width = pct + '%';
+  document.getElementById('sideProgressText').textContent = pct + '%';
+  document.getElementById('heroProgressFill').style.width = pct + '%';
+  document.getElementById('heroProgressText').textContent = `${doneSet.size} / ${TOPIC_IDS.length} مواضيع خلّصتها`;
+  TOPIC_IDS.forEach(id=>{
+    const navLink = document.querySelector(`#topnav .navlink[data-target="${id}"]`);
+    if(navLink) navLink.classList.toggle('done', doneSet.has(id));
+  });
+}
+function toggleDone(id, btn){
+  if(doneSet.has(id)){
+    doneSet.delete(id);
+    btn.classList.remove('done');
+    btn.textContent = '✓ علّمت الموضوع ده كمذاكَر';
+  } else {
+    doneSet.add(id);
+    btn.classList.add('done');
+    btn.textContent = '✓ مذاكَر — كليك تاني للإلغاء';
+  }
+  updateProgressUI();
+}
+updateProgressUI();
+
+const QUESTIONS = [
+  {q:"requests.get(url) بترجع إيه؟", opts:["نص HTML مباشرة","كائن Response فيه status code والمحتوى","رقم status code بس","لستة من كل الروابط"], a:1, ex:"بترجع كائن Response كامل — response.text بيديك المحتوى، response.status_code بيديك حالة الطلب."},
+  {q:"status_code == 200 معناه إيه؟", opts:["الصفحة مش موجودة","السيرفر واقع","الطلب نجح والصفحة اتجابت بنجاح","محتاج تسجل دخول"], a:2, ex:"200 هو الكود القياسي (HTTP) اللي معناه إن كل حاجة تمام والطلب نجح."},
+  {q:"BeautifulSoup(response.text, 'html.parser') بتعمل إيه بالظبط؟", opts:["بتبعت طلب جديد للسيرفر","بتحوّل النص الخام لكائن قابل للتنقل والبحث فيه","بتحذف كل التاجات من الصفحة","بتحوّل الصفحة لصورة"], a:1, ex:"بتاخد النص الخام وتبني منه بنية شجرية منظمة تقدر تدور فيها بسهولة."},
+  {q:"إيه الفرق الأساسي بين find() و find_all()؟", opts:["مفيش فرق خالص","find بيرجع أول عنصر بس، find_all بيرجع لستة بكل العناصر المطابقة","find_all أسرع في الأداء بس","find بيشتغل مع class فقط"], a:1, ex:"find() = عنصر واحد (أو None). find_all() = لستة بكل العناصر المطابقة (ممكن تكون فاضية)."},
+  {q:"get_text(strip=True) بتزود إيه عن get_text() العادية؟", opts:["بتترجم النص","بتشيل المسافات والأسطر الفاضية حوالين النص","بتحول النص لأرقام","بترجع HTML بدل النص"], a:1, ex:"strip=True بتنضّف المسافات والـ newlines الزيادة اللي بتيجي من تنسيق الـ HTML الأصلي."},
+  {q:"لو عايز تدور على عنصر بكلاس معين، إزاي تكتب الكود؟", opts:["soup.find('div', 'side_categories')","soup.find('div', class_='side_categories')","soup.class('side_categories')","soup.find(class='side_categories')"], a:1, ex:"لازم تستخدم class_ (بشرطة تحت في الآخر) لإن class كلمة محجوزة في بايثون."},
+  {q:"list(map(lambda i: i.strip(), res)) بتعمل إيه؟", opts:["بتحذف عناصر res الفاضية","بتطبّق strip() على كل عنصر في res وترجع لستة نضيفة","بترتب res أبجديًا","بتحول res لـ dictionary"], a:1, ex:"map بتطبّق الدالة (هنا lambda بتعمل strip) على كل عنصر في اللستة وترجع النتايج كلها."},
+  {q:"ليه محتاجين list comprehension زي [i.get_text() for i in side_categories]؟", opts:["عشان نطبع كل عنصر لوحده","عشان نجيب النص من كل عنصر في اللستة دفعة واحدة في سطر واحد","عشان نحذف عناصر فاضية","عشان نبطئ الكود عمدًا"], a:1, ex:"list comprehension بتخلينا نستخرج نفس الحاجة (النص هنا) من كل عنصر في اللستة بسطر واحد بدل loop كامل."},
+  {q:"df['col'].map(lambda i: i.strip()) على عمود DataFrame بتعمل إيه؟", opts:["بتحذف العمود كله","بتطبّق الدالة على كل قيمة في العمود، صف بصف — زي map() العادية بالظبط","بترجع أول قيمة بس","بتغيّر اسم العمود"], a:1, ex:".map() على عمود DataFrame شغّالة بنفس فكرة map() العادية، بس بتشتغل عمود بعمود بدل لستة عادية."},
+  {q:"ليه عملنا دالة extract_book_info() بدل ما نكتب كود الاستخراج مرة واحدة بس؟", opts:["عشان الكود يبقى أبطأ","عشان نقدر نعيد استخدامها على أي صفحة كتب تانية من غير تكرار الكود","عشان نخفي الكود عن المستخدم","مفيش سبب حقيقي، مجرد تنسيق"], a:1, ex:"تصغير الدالة بتخليها reusable — تقدر تنادي extract_book_info() على أي لستة كتب من أي صفحة، من غير ما تكرر نفس الأسطر كل مرة."}
+];
+
+const list = document.getElementById('quizList');
+let answered = new Array(QUESTIONS.length).fill(false);
+let score = 0;
+
+function render(){
+  list.innerHTML = '';
+  QUESTIONS.forEach((item, qi)=>{
+    const card = document.createElement('div');
+    card.className = 'qcard';
+    card.innerHTML = `
+      <div class="qtext">${qi+1}. ${item.q}</div>
+      <div class="opts">
+        ${item.opts.map((o,oi)=>`<button class="opt" data-q="${qi}" data-o="${oi}">${o}</button>`).join('')}
+      </div>
+      <div class="explain" id="ex-${qi}">💡 ${item.ex}</div>
+    `;
+    list.appendChild(card);
+  });
+  document.querySelectorAll('.opt').forEach(btn=>{
+    btn.addEventListener('click', onAnswer);
+  });
+  document.getElementById('scoreTotal').textContent = QUESTIONS.length;
+}
+
+function onAnswer(e){
+  const qi = +e.target.dataset.q;
+  const oi = +e.target.dataset.o;
+  if(answered[qi]) return;
+  answered[qi] = true;
+  const item = QUESTIONS[qi];
+  const opts = document.querySelectorAll(`.opt[data-q="${qi}"]`);
+  opts.forEach(b=>b.disabled = true);
+  if(oi === item.a){
+    e.target.classList.add('correct');
+    score++;
+  } else {
+    e.target.classList.add('wrong');
+    opts[item.a].classList.add('correct');
+  }
+  document.getElementById(`ex-${qi}`).style.display = 'block';
+  document.getElementById('scoreVal').textContent = score;
+}
+
+function resetQuiz(){
+  answered = new Array(QUESTIONS.length).fill(false);
+  score = 0;
+  document.getElementById('scoreVal').textContent = 0;
+  render();
+}
+
+render();
+</script>
+</body>
+</html>

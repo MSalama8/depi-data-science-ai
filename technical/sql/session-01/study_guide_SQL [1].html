@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session · قواعد البيانات و SQL</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#130a1c; --bg-soft:#1a0f27; --panel:#221534; --line:#3c2452;
+    --ink:#f8ecff; --ink-dim:#b79fd1;
+    --pink:#f472b6; --pink-dim:#c2478f;
+    --lime:#a3e635; --lime-dim:#7cb32a;
+    --coral:#fb7185; --green:#7fd9a8;
+    --code-bg:#0d0716; --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{margin:0; background:
+      radial-gradient(1200px 560px at 88% -8%, rgba(244,114,182,.11), transparent 60%),
+      radial-gradient(900px 500px at -5% 15%, rgba(163,230,53,.08), transparent 55%),
+      var(--bg); color:var(--ink); font-family:'Cairo',sans-serif; line-height:1.75;}
+  code,.mono{font-family:'JetBrains Mono',monospace;}
+  ::selection{background:rgba(244,114,182,.28); color:#fff;}
+  #pageProgress{position:fixed; top:0; left:0; height:3px; width:0%; background:linear-gradient(90deg,var(--pink),var(--lime)); z-index:999; transition:width .1s linear;}
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg-soft);}
+  ::-webkit-scrollbar-thumb{background:linear-gradient(var(--pink-dim),var(--lime-dim)); border-radius:10px;}
+  .shell{display:grid; grid-template-columns:270px 1fr; min-height:100vh;}
+  @media (max-width:880px){.shell{grid-template-columns:1fr;} .side{position:static; height:auto;}}
+  .side{position:sticky; top:0; height:100vh; overflow-y:auto; background:linear-gradient(180deg,var(--bg-soft),var(--bg)); padding:28px 18px; position:relative;}
+  .side::after{content:""; position:absolute; top:0; bottom:0; left:0; width:3px; background:linear-gradient(180deg,var(--pink),var(--lime) 55%,var(--coral)); box-shadow:0 0 14px rgba(244,114,182,.35);}
+  @media (max-width:880px){.side::after{display:none;}}
+  .brand{display:flex; align-items:center; gap:11px; margin-bottom:8px; padding:0 6px;}
+  .brand .dot{width:13px;height:13px;border-radius:4px; background:linear-gradient(135deg,var(--pink),var(--lime)); box-shadow:0 0 16px rgba(244,114,182,.55);}
+  .brand b{font-size:15.5px; letter-spacing:.3px;}
+  .brand span{display:block; font-size:11px; color:var(--ink-dim);}
+  .supervisor{margin:0 6px 16px; padding:13px 14px; border:1px solid rgba(244,114,182,.28); border-radius:12px; background:linear-gradient(135deg,rgba(244,114,182,.09),rgba(163,230,53,.06)); font-size:12.5px; color:var(--ink-dim); line-height:1.6;}
+  .supervisor .row{margin-bottom:9px;}
+  .supervisor .row:last-child{margin-bottom:0;}
+  .supervisor b{color:var(--pink); display:block; font-size:12px; margin-bottom:2px; font-weight:800;}
+  .deflist{display:flex; flex-direction:column; gap:10px; margin-top:14px;}
+  .defitem{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:14px 17px; display:flex; flex-direction:column; gap:5px;}
+  .defitem .term{color:var(--pink); font-weight:800; font-size:14.5px; font-family:'JetBrains Mono',monospace;}
+  .defitem .desc{color:var(--ink-dim); font-size:13.5px; line-height:1.85;}
+  @media (max-width:640px){
+    table.mini th, table.mini td{padding:8px 10px; font-size:12.5px; line-height:1.7;}
+  }
+  .side-progress{margin:0 6px 20px; padding:12px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel);}
+  .side-progress .lbl{display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink-dim); margin-bottom:8px; font-family:'JetBrains Mono',monospace;}
+  .side-progress .lbl b{color:var(--pink); font-weight:700;}
+  .track{height:7px; border-radius:20px; background:var(--code-bg); overflow:hidden; border:1px solid var(--line);}
+  .fill{height:100%; width:0%; border-radius:20px; background:linear-gradient(90deg,var(--pink),var(--lime)); transition:width .35s ease;}
+  nav .navlink{display:flex; align-items:center; gap:10px; width:100%; padding:9.5px 11px; border-radius:10px; color:var(--ink-dim); text-decoration:none; font-size:13.5px; margin-bottom:2px; border:1px solid transparent; transition:.2s ease; position:relative; background:none; font-family:'Cairo',sans-serif; cursor:pointer; text-align:right;}
+  nav .navlink .n{font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--lime); width:22px; text-align:center;}
+  nav .navlink:hover{background:var(--panel); color:var(--ink); transform:translateX(-2px);}
+  nav .navlink.active{background:linear-gradient(90deg,rgba(244,114,182,.14),rgba(163,230,53,.08)); border-color:rgba(244,114,182,.35); color:var(--pink);}
+  nav .navlink.active .n{color:var(--pink);}
+  nav .navlink .check{margin-right:auto; font-size:12px; color:var(--green); opacity:0; transition:.2s;}
+  nav .navlink.done .check{opacity:1;}
+  .nav-quiz{margin-top:16px; padding-top:16px; border-top:1px dashed var(--line);}
+  main{padding:46px clamp(20px,4vw,68px) 90px;}
+  .hero{background:linear-gradient(155deg,var(--panel),var(--bg-soft) 70%); border:1px solid var(--line); border-radius:22px; padding:38px clamp(22px,4vw,48px); margin-bottom:42px; position:relative; overflow:hidden; box-shadow:0 30px 60px -30px rgba(0,0,0,.6);}
+  .hero::after{content:"SELECT * FROM students;"; position:absolute; left:-14px; bottom:-16px; font-family:'JetBrains Mono',monospace; font-size:38px; color:rgba(244,114,182,.055); letter-spacing:1px; pointer-events:none;}
+  .eyebrow{font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:1.5px; background:linear-gradient(90deg,var(--pink),var(--lime)); -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:700;}
+  .hero h1{font-size:clamp(25px,4vw,37px); margin:11px 0 9px; font-weight:900;}
+  .hero p{color:var(--ink-dim); max-width:680px; margin:0; font-size:15px;}
+  .hero-tags{display:flex; flex-wrap:wrap; gap:9px; margin-top:22px;}
+  .tag{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-dim); border:1px solid var(--line); padding:6px 12px; border-radius:20px; background:var(--code-bg); transition:.2s;}
+  .tag:hover{border-color:rgba(244,114,182,.4); color:var(--pink);}
+  .hero-progress{margin-top:24px; display:flex; align-items:center; gap:14px;}
+  .hero-progress .track{flex:1; height:9px;}
+  .hero-progress span{font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--pink); white-space:nowrap;}
+  section.topic{border-top:1px solid var(--line); padding-top:36px; margin-top:36px; scroll-margin-top:24px; opacity:0; transform:translateY(14px); transition:opacity .55s ease, transform .55s ease;}
+  section.topic.revealed{opacity:1; transform:translateY(0);}
+  section.topic .kicker{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
+  section.topic .kicker .idx{font-family:'JetBrains Mono',monospace; color:var(--pink); font-size:13px; border:1px solid var(--pink-dim); border-radius:9px; padding:2px 10px; background:rgba(244,114,182,.06);}
+  section.topic h2{font-size:23px; margin:7px 0 12px; font-weight:800;}
+  section.topic .lead{color:var(--ink-dim); max-width:800px; margin-bottom:19px; font-size:15px;}
+  .grid2{display:grid; grid-template-columns:1.1fr .9fr; gap:18px; align-items:start;}
+  @media (max-width:760px){.grid2{grid-template-columns:1fr;}}
+  .code-card{background:var(--code-bg); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; transition:.25s ease; position:relative;}
+  .code-card:hover{border-color:rgba(163,230,53,.4); box-shadow:0 14px 34px -18px rgba(163,230,53,.3);}
+  .code-card .bar{display:flex; align-items:center; gap:7px; padding:10px 14px; border-bottom:1px solid var(--line); background:#110b1c;}
+  .code-card .bar i{width:9px;height:9px;border-radius:50%;background:#3a2a4d;}
+  .code-card .bar span{margin-right:auto; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim);}
+  .copy-btn{background:transparent; border:1px solid var(--line); color:var(--ink-dim); font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 9px; border-radius:7px; cursor:pointer; transition:.2s;}
+  .copy-btn:hover{border-color:var(--pink); color:var(--pink);}
+  .copy-btn.copied{border-color:var(--green); color:var(--green);}
+  .code-card pre{margin:0; padding:17px; direction:ltr; text-align:left; overflow-x:auto; font-family:'JetBrains Mono',monospace; font-size:13px; color:#efe4fa; line-height:1.68;}
+  .code-card pre .c{color:#7a6893;} .code-card pre .k{color:var(--pink);} .code-card pre .s{color:var(--lime);} .code-card pre .f{color:#7dd3fc;}
+  .out-card{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden; transition:.25s ease;}
+  .out-card:hover{border-color:rgba(244,114,182,.35);}
+  .out-card .bar{padding:10px 14px; border-bottom:1px solid var(--line); font-size:11.5px; color:var(--pink); font-family:'JetBrains Mono',monospace;}
+  .out-card pre{margin:0; padding:17px; direction:ltr; text-align:left; font-family:'JetBrains Mono',monospace; font-size:12.6px; color:#e6d9f5; white-space:pre-wrap; word-break:break-word;}
+  .note{margin-top:15px; padding:13px 17px; border-radius:11px; background:rgba(163,230,53,.08); border:1px solid rgba(163,230,53,.28); font-size:13.5px; color:#e2f3c4;}
+  .note b{color:var(--lime);}
+  .warn{margin-top:15px; padding:13px 17px; border-radius:11px; background:rgba(251,113,133,.08); border:1px solid rgba(251,113,133,.3); font-size:13.5px; color:#ffd7dc;}
+  .warn b{color:var(--coral);}
+  .try{margin-top:15px; padding:15px 17px; border-radius:11px; background:rgba(244,114,182,.08); border:1px dashed rgba(244,114,182,.4); font-size:14px;}
+  .try b{color:var(--pink);}
+  table.mini{width:100%; border-collapse:collapse; margin-top:14px; font-size:13.3px;}
+  table.mini th,table.mini td{border:1px solid var(--line); padding:8px 12px; text-align:right;}
+  table.mini th{background:var(--panel); color:var(--pink); font-family:'JetBrains Mono',monospace; font-size:11.5px;}
+  table.mini td{color:var(--ink-dim);}
+  .catgrid{display:grid; grid-template-columns:repeat(5,1fr); gap:10px; margin-top:14px;}
+  @media (max-width:820px){.catgrid{grid-template-columns:repeat(2,1fr);}}
+  .catcard{background:var(--panel); border:1px solid var(--line); border-radius:12px; padding:12px; text-align:center;}
+  .catcard .t{font-family:'JetBrains Mono',monospace; color:var(--pink); font-weight:700; font-size:14px;}
+  .catcard .d{font-size:11px; color:var(--ink-dim); margin:4px 0 8px;}
+  .catcard .cmds{font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--lime); line-height:1.9;}
+  .mark-row{display:flex; justify-content:flex-end; margin-top:18px;}
+  .mark-btn{background:var(--code-bg); border:1px solid var(--line); color:var(--ink-dim); font-family:'Cairo',sans-serif; font-size:13px; font-weight:700; padding:9px 16px; border-radius:10px; cursor:pointer; transition:.2s; display:flex; align-items:center; gap:7px;}
+  .mark-btn:hover{border-color:var(--pink-dim); color:var(--ink);}
+  .mark-btn.done{border-color:var(--green); color:var(--green); background:rgba(127,217,168,.08);}
+  #quiz{border-top:1px solid var(--line); padding-top:36px; margin-top:52px;}
+  .qcard{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:21px 23px; margin-bottom:16px; transition:.2s;}
+  .qcard:hover{border-color:rgba(244,114,182,.25);}
+  .qcard .qtext{font-weight:700; margin-bottom:14px; font-size:15px;}
+  .qcard .opts{display:grid; gap:9px;}
+  .opt{display:block; width:100%; text-align:right; cursor:pointer; background:var(--code-bg); border:1px solid var(--line); color:var(--ink); padding:11px 15px; border-radius:10px; font-family:'Cairo',sans-serif; font-size:13.5px; transition:.15s;}
+  .opt:hover{border-color:var(--pink-dim);}
+  .opt.correct{border-color:var(--lime); background:rgba(163,230,53,.14); color:var(--lime);}
+  .opt.wrong{border-color:var(--coral); background:rgba(251,113,133,.12); color:var(--coral);}
+  .opt[disabled]{cursor:default;}
+  .explain{display:none; margin-top:12px; font-size:13.2px; color:var(--ink-dim); border-top:1px dashed var(--line); padding-top:10px;}
+  .quiz-summary{background:linear-gradient(155deg,var(--panel),var(--bg-soft)); border:1px solid var(--line); border-radius:var(--radius); padding:23px; text-align:center; margin-bottom:20px;}
+  .quiz-summary .score{font-family:'JetBrains Mono',monospace; font-size:36px; font-weight:700; background:linear-gradient(90deg,var(--pink),var(--lime)); -webkit-background-clip:text; background-clip:text; color:transparent;}
+  .reset-btn{margin-top:11px; background:linear-gradient(90deg,var(--pink),#ffb3d9); color:#2b0a1f; border:none; font-weight:700; padding:10px 22px; border-radius:10px; cursor:pointer; font-family:'Cairo',sans-serif; font-size:14px; transition:.2s;}
+  .reset-btn:hover{transform:translateY(-1px); box-shadow:0 10px 22px -10px rgba(244,114,182,.5);}
+  #toTop{position:fixed; bottom:22px; left:22px; width:42px; height:42px; border-radius:50%; background:var(--panel); border:1px solid var(--line); color:var(--pink); font-size:18px; display:flex; align-items:center; justify-content:center; cursor:pointer; opacity:0; pointer-events:none; transition:.25s; z-index:998;}
+  #toTop.show{opacity:1; pointer-events:auto;}
+  #toTop:hover{border-color:var(--pink);}
+  footer{text-align:center; color:var(--ink-dim); font-size:12.5px; padding:34px 0 10px;}
+  footer .sup{display:block; margin-top:6px; color:var(--pink-dim); font-family:'JetBrains Mono',monospace; font-size:11.5px;}
+  #proscons .out-card pre{font-family:Calibri,'Segoe UI',sans-serif; font-weight:700; direction:rtl; text-align:right; white-space:pre-wrap;}
+</style>
+</head>
+<body>
+<div id="pageProgress"></div>
+<div class="shell">
+  <aside class="side">
+    <div class="brand"><div class="dot"></div><div><b>SQL Session</b><span>قواعد البيانات · Databases & SQL</span></div></div>
+    <div class="supervisor">
+      <div class="row"><b>Instructor</b>Eng. Ahmed Salem</div>
+      <div class="row"><b>Guide by</b>Mohamed Mahmoud Salama</div>
+    </div>
+    <div class="side-progress">
+      <div class="lbl"><span>تقدّمك في المذاكرة</span><b id="sideProgressText">0%</b></div>
+      <div class="track"><div class="fill" id="sideProgressFill"></div></div>
+    </div>
+    <nav id="topnav">
+      <button type="button" class="navlink" data-target="intro"><span class="n">01</span> قاعدة البيانات<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="proscons"><span class="n">02</span> مميزات وعيوب<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="sqlacid"><span class="n">03</span> SQL و ACID<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="schema"><span class="n">04</span> Schema والقيود<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="categories"><span class="n">05</span> تصنيفات الأوامر<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="ddl"><span class="n">06</span> DDL<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="dml"><span class="n">07</span> DML<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="dcltcl"><span class="n">08</span> DCL / TCL<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="keys"><span class="n">09</span> ERD و المفاتيح<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="select"><span class="n">10</span> SELECT / DISTINCT<span class="check">✓</span></button>
+      <div class="nav-quiz">
+        <button type="button" class="navlink" data-target="quiz">🧠 اختبر نفسك (كويز)</button>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="hero">
+      <div class="eyebrow">SESSION · DATABASES & SQL</div>
+      <h1>قواعد البيانات و SQL — ملخص شامل</h1>
+      <p>مرجع مذاكرة تفاعلي مبني على ملخصك الكامل: من مفهوم قاعدة البيانات وخصائص ACID، لغاية تصنيفات أوامر SQL الخمسة، المفاتيح والعلاقات، واستعلامات SELECT. كل نقطة فيها شرح مبسط، أمثلة كود، وكويز في الآخر.</p>
+      <div class="hero-tags">
+        <span class="tag">ACID</span><span class="tag">DDL</span><span class="tag">DML</span><span class="tag">DCL</span><span class="tag">TCL</span>
+        <span class="tag">Primary / Foreign Key</span><span class="tag">SELECT · DISTINCT</span>
+      </div>
+      <div class="hero-progress">
+        <div class="track"><div class="fill" id="heroProgressFill"></div></div>
+        <span id="heroProgressText">0 / 10 مواضيع خلّصتها</span>
+      </div>
+    </div>
+
+    <!-- 01 INTRO -->
+    <section class="topic" id="intro">
+      <div class="kicker"><span class="idx">01</span></div>
+      <h2>قاعدة البيانات إيه؟</h2>
+      <p class="lead">قاعدة البيانات (Database) هي مجموعة منظمة من البيانات، بيتم تخزينها والوصول إليها إلكترونيًا من خلال نظام حاسوبي، وبتدعم تخزين البيانات والتعامل معها (إضافة، تعديل، حذف، استرجاع).</p>
+      <div class="note"><b>فكّر فيها كده:</b> تخيل قاعدة البيانات كخزانة ملفات كبيرة ومنظمة، بها أدراج (Tables/جداول) لكل نوع من البيانات، وكل درج له تسميات وترتيب يسهل الوصول لأي معلومة بسرعة — بدل الاعتماد على ملفات متفرقة وغير مترابطة.</p></div>
+      <h2 style="font-size:18px; margin-top:26px;">مكونات المنظومة</h2>
+      <p class="lead">في 3 أطراف بتتواصل مع قاعدة البيانات من خلال نظام إدارة قواعد البيانات (DBMS): <b style="color:var(--pink)">Application</b> (برامج المستخدم النهائي)، <b style="color:var(--pink)">Other Users</b> (مستخدمين متصلين مباشرة)، و<b style="color:var(--pink)">Other DBMS</b> (أنظمة إدارة أخرى). كل دول بيتواصلوا مع الـ DBMS اللي بيعرّف السجلات، ينفّذ الاستعلامات، ويحدّث البيانات، وبعدين يخزنها في منطقة التخزين (Storage Area).</p>
+      <h2 style="font-size:18px; margin-top:26px;">أنواع قواعد البيانات</h2>
+      <table class="mini">
+        <tr><th>النوع</th><th>الوصف</th></tr>
+        <tr><td>Centralized</td><td>مركزية — تُخزَّن في مكان واحد</td></tr>
+        <tr><td>Distributed</td><td>موزّعة على أكثر من موقع</td></tr>
+        <tr><td>Relational</td><td>علائقية — الأكثر شيوعًا ومحور هذا الكورس</td></tr>
+        <tr><td>NoSQL</td><td>لا تعتمد الشكل الجدولي التقليدي</td></tr>
+        <tr><td>Cloud / Personal / Commercial / Operational / Object-oriented / Graph</td><td>أنواع أخرى حسب الاستخدام</td></tr>
+      </table>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('intro', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 02 PROS/CONS -->
+    <section class="topic" id="proscons">
+      <div class="kicker"><span class="idx">02</span></div>
+      <h2>مميزات وعيوب استخدام قواعد البيانات</h2>
+      <div class="grid2">
+        <div class="out-card"><div class="bar">▸ مميزات ✔</div><pre>- تقليل تكرار البيانات
+- تقليل أخطاء التحديث وزيادة الاتساق
+- تكامل أكبر واستقلالية عن التطبيقات
+- تحسين وصول المستخدمين عبر لغات الاستعلام
+- تحسين أمان البيانات
+- تقليل تكاليف الإدخال والتخزين والاسترجاع</pre></div>
+        <div class="out-card"><div class="bar">▸ عيوب ✘</div><pre>- التعقيد في التصميم والإدارة
+- التكلفة العالية نسبيًا للترخيص والصيانة
+- مخاطر أمنية لو لم تُدار بعناية
+- مشاكل التوافقية بين الأنظمة المختلفة</pre></div>
+      </div>
+      <div class="note"><b>من أشهر الأنظمة:</b> Oracle Database, Sybase, MySQL, IBM Db2.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('proscons', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 03 SQL & ACID -->
+    <section class="topic" id="sqlacid">
+      <div class="kicker"><span class="idx">03</span></div>
+      <h2>SQL والمعاملات (Transactions)</h2>
+      <p class="lead">SQL اختصار لـ Structured Query Language، بتُستخدم لتنفيذ العمليات على السجلات: تحديث، إدراج، حذف، وإنشاء وتعديل الجداول والعروض.</p>
+      <div class="note"><b>مهم جدًا:</b> SQL ليست نظام قاعدة بيانات بحد ذاتها (زي MySQL أو Oracle)، وإنما هي "لغة استعلام" بنستخدمها للتواصل مع نظام إدارة قاعدة البيانات وإصدار الأوامر له.</div>
+      <h2 style="font-size:18px; margin-top:24px;">المعاملة (Transaction)</h2>
+      <p class="lead">وحدة منطقية واحدة من عمليات قاعدة البيانات، بتشمل عملية أو أكتر من (insert / delete / update)، ممكن تكون مضمّنة في برنامج أو تُنفَّذ تفاعليًا عبر SQL.</p>
+      <h2 style="font-size:18px; margin-top:24px;">خصائص ACID</h2>
+      <div class="deflist">
+        <div class="defitem"><div class="term">Atomicity — الذرية</div><div class="desc">المعاملة تُنفَّذ بالكامل أو لا تُنفَّذ أبدًا (لا تنفيذ جزئي)</div></div>
+        <div class="defitem"><div class="term">Consistency — الاتساق</div><div class="desc">انتقال قاعدة البيانات من حالة صحيحة إلى حالة صحيحة أخرى</div></div>
+        <div class="defitem"><div class="term">Isolation — العزل</div><div class="desc">كل معاملة تُنفَّذ دون تأثر بمعاملات أخرى تعمل في نفس الوقت</div></div>
+        <div class="defitem"><div class="term">Durability — الديمومة</div><div class="desc">التغييرات المحفوظة (Committed) تبقى دائمة حتى بعد أي عطل</div></div>
+      </div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('sqlacid', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 04 SCHEMA / DATA TYPES / CONSTRAINTS -->
+    <section class="topic" id="schema">
+      <div class="kicker"><span class="idx">04</span></div>
+      <h2>مخطط قاعدة البيانات (Schema)، أنواع البيانات، والقيود</h2>
+      <p class="lead">الـ Schema عبارة عن مجموعة من الكائنات (Objects) المرتبطة ببعضها داخل قاعدة البيانات، ولها مالك واحد له صلاحية التعديل على بنية أي كائن داخلها. الـ Schema لا تمثل شخصًا بحد ذاته، رغم ارتباطها بمستخدم (User) موجود في قاعدة البيانات.</p>
+      <h2 style="font-size:18px; margin-top:24px;">أنواع البيانات (Data Types)</h2>
+      <table class="mini">
+        <tr><th>النوع</th><th>أمثلة</th></tr>
+        <tr><td>نصية / حرفية (Alphanumeric)</td><td>VARCHAR2, CHAR</td></tr>
+        <tr><td>رقمية (Numeric)</td><td>NUMBER, INT, FLOAT</td></tr>
+        <tr><td>تاريخ ووقت (Date and Time)</td><td>DATE, DATETIME</td></tr>
+      </table>
+      <h2 style="font-size:18px; margin-top:24px;">قيود قواعد البيانات (Constraints)</h2>
+      <div class="deflist">
+        <div class="defitem"><div class="term">Primary Key</div><div class="desc">يمنع التكرار والفراغ (يجمع Not Null + Unique) — يميّز كل صف بشكل فريد</div></div>
+        <div class="defitem"><div class="term">Not Null</div><div class="desc">يمنع ترك الحقل فارغًا (لا يقبل NULL)</div></div>
+        <div class="defitem"><div class="term">Unique Key</div><div class="desc">يضمن أن كل القيم في العمود فريدة ولا تتكرر</div></div>
+        <div class="defitem"><div class="term">Referential Integrity (FK)</div><div class="desc">يربط عمودًا بعمود آخر (غالبًا Primary Key) في جدول آخر</div></div>
+        <div class="defitem"><div class="term">Check</div><div class="desc">يفرض شرطًا منطقيًا معينًا على القيم المسموح بإدخالها</div></div>
+      </div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('schema', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 05 CATEGORIES -->
+    <section class="topic" id="categories">
+      <div class="kicker"><span class="idx">05</span></div>
+      <h2>تصنيفات أوامر SQL الخمسة</h2>
+      <p class="lead">أوامر SQL بتتقسم لـ 5 تصنيفات رئيسية حسب وظيفتها.</p>
+      <div class="catgrid">
+        <div class="catcard"><div class="t">DDL</div><div class="d">تعريف البيانات</div><div class="cmds">CREATE<br>ALTER<br>DROP<br>TRUNCATE</div></div>
+        <div class="catcard"><div class="t">DML</div><div class="d">معالجة البيانات</div><div class="cmds">INSERT<br>UPDATE<br>DELETE</div></div>
+        <div class="catcard"><div class="t">DCL</div><div class="d">التحكم بالصلاحيات</div><div class="cmds">GRANT<br>REVOKE</div></div>
+        <div class="catcard"><div class="t">TCL</div><div class="d">التحكم بالمعاملات</div><div class="cmds">COMMIT<br>ROLLBACK<br>SAVEPOINT</div></div>
+        <div class="catcard"><div class="t">DQL</div><div class="d">الاستعلام</div><div class="cmds">SELECT</div></div>
+      </div>
+      <div class="note"><b>الفرق الجوهري:</b> أوامر DDL بتتحفظ تلقائيًا (Auto-committed) فور تنفيذها ومش ممكن التراجع عنها. أوامر DML لسه ممكن تعمللها ROLLBACK لحد ما تعمل COMMIT.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('categories', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 06 DDL -->
+    <section class="topic" id="ddl">
+      <div class="kicker"><span class="idx">06</span></div>
+      <h2>DDL — Data Definition Language</h2>
+      <p class="lead">تُستخدم لتغيير بنية الجدول: إنشاء، حذف، أو تعديل. جميع أوامرها Auto-committed ولا يمكن التراجع عنها.</p>
+      <div class="grid2">
+        <div class="code-card"><div class="bar"><i></i><i></i><i></i><span>create.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">CREATE TABLE</span> EMPLOYEE(
+    Name <span class="f">VARCHAR2(20)</span>,
+    Email <span class="f">VARCHAR2(100)</span>,
+    DOB <span class="f">DATE</span>
+);</pre></div>
+        <div class="code-card"><div class="bar"><i></i><i></i><i></i><span>drop.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">DROP TABLE</span> EMPLOYEE;</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card"><div class="bar"><i></i><i></i><i></i><span>alter.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">ALTER TABLE</span> STU_DETAILS
+<span class="k">ADD</span> (ADDRESS <span class="f">VARCHAR2(20)</span>);
+
+<span class="k">ALTER TABLE</span> STU_DETAILS
+<span class="k">MODIFY</span> (NAME <span class="f">VARCHAR2(20)</span>);</pre></div>
+        <div class="code-card"><div class="bar"><i></i><i></i><i></i><span>truncate.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">TRUNCATE TABLE</span> EMPLOYEE;</pre></div>
+      </div>
+      <div class="note"><b>TRUNCATE مقابل DELETE:</b> TRUNCATE مطابق وظيفيًا لـ DELETE بدون WHERE (بيمسح كل الصفوف)، لكنه أسرع لأنه مش بيسجل صف بصف، وهو أمر DDL — بينما DELETE أمر DML.</div>
+      <div class="warn"><b>ملحوظة مهمة لو شغال على PostgreSQL:</b> القاعدة العامة إن DDL "مش ممكن ROLLBACK" صحيحة في أغلب الأنظمة (زي MySQL/Oracle مع TRUNCATE مثلًا). لكن في PostgreSQL تحديدًا، كل أوامر DDL — بما فيها TRUNCATE وCREATE وDROP — بتكون transactional فعليًا، يعني لو نفّذتها جوه BEGIN...ROLLBACK قبل ما تعمل COMMIT، هترجع زي ما كانت. يعني الفرق ده خاص بنظام قاعدة البيانات المستخدم، مش قاعدة مطلقة في SQL كله.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('ddl', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 07 DML -->
+    <section class="topic" id="dml">
+      <div class="kicker"><span class="idx">07</span></div>
+      <h2>DML — Data Manipulation Language</h2>
+      <p class="lead">تُستخدم لتعديل محتوى البيانات نفسها، مش بنية الجدول. أوامرها Not Auto-committed — يمكن التراجع عنها بـ ROLLBACK.</p>
+      <div class="grid2">
+        <div class="code-card"><div class="bar"><i></i><i></i><i></i><span>insert.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">INSERT INTO</span> Students
+<span class="k">VALUES</span> (<span class="s">'Saleh'</span>, <span class="s">'Ahmed'</span>, <span class="s">'Moharam bak'</span>, <span class="s">'Alex.'</span>);
+
+<span class="c">-- أو أعمدة محددة (الباقي NULL)</span>
+<span class="k">INSERT INTO</span> Students (LastName, City)
+<span class="k">VALUES</span> (<span class="s">'Hassan'</span>, <span class="s">'Assuit'</span>);</pre></div>
+        <div class="code-card"><div class="bar"><i></i><i></i><i></i><span>delete.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">DELETE FROM</span> Store_Information
+<span class="k">WHERE</span> store_name = <span class="s">'Los Angeles'</span>;</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card"><div class="bar"><i></i><i></i><i></i><span>update.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">UPDATE</span> Students
+<span class="k">SET</span> Address = <span class="s">'241 El-haram'</span>, City = <span class="s">'Giza'</span>
+<span class="k">WHERE</span> LastName = <span class="s">'El-Sayed'</span>;</pre></div>
+        <div class="out-card"><div class="bar">▸ تنبيه</div><pre>من غير WHERE، UPDATE بيطبّق
+التعديل على كل صفوف الجدول
+دفعة واحدة! لازم تتأكد من
+شرط WHERE قبل التنفيذ دايمًا.</pre></div>
+      </div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('dml', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 08 DCL/TCL -->
+    <section class="topic" id="dcltcl">
+      <div class="kicker"><span class="idx">08</span></div>
+      <h2>DCL — الصلاحيات، و TCL — المعاملات</h2>
+      <p class="lead">DCL بتمنح أو تسحب صلاحيات المستخدمين. TCL بتُستخدم فقط مع أوامر DML (زي INSERT وDELETE وUPDATE)، ومينفعش تتستخدم أثناء إنشاء أو حذف الجداول (DDL).</p>
+      <div class="grid2">
+        <div class="code-card"><div class="bar"><i></i><i></i><i></i><span>dcl.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">GRANT</span> SELECT, UPDATE <span class="k">ON</span> MY_TABLE
+<span class="k">TO</span> SOME_USER, ANOTHER_USER;
+
+<span class="k">REVOKE</span> SELECT, UPDATE <span class="k">ON</span> MY_TABLE
+<span class="k">FROM</span> USER1, USER2;</pre></div>
+        <div class="code-card"><div class="bar"><i></i><i></i><i></i><span>tcl.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">DELETE FROM</span> CUSTOMERS <span class="k">WHERE</span> AGE = 25;
+<span class="k">COMMIT;</span>
+
+<span class="c">-- أو للتراجع قبل الـ COMMIT</span>
+<span class="k">DELETE FROM</span> CUSTOMERS <span class="k">WHERE</span> AGE = 25;
+<span class="k">ROLLBACK;</span>
+
+<span class="k">SAVEPOINT</span> SAVEPOINT_NAME;</pre></div>
+      </div>
+      <div class="note"><b>خلاصة:</b> COMMIT بتحفظ التعديلات بشكل دائم، ROLLBACK بتتراجع عن التعديلات اللي لسه ما اتحفظتش، وSAVEPOINT بتحدد نقطة تقدر ترجعلها من غير ما تلغي المعاملة كلها.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('dcltcl', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 09 KEYS / ERD -->
+    <section class="topic" id="keys">
+      <div class="kicker"><span class="idx">09</span></div>
+      <h2>مفاهيم قواعد البيانات العلائقية: ERD والمفاتيح</h2>
+      <p class="lead">نموذج الكيان والعلاقة (ERD) أداة لتصميم قواعد البيانات العلائقية قبل إنشائها. القاعدة الأساسية: الكيانات (Entities) تتحول إلى جداول (Tables)، والخصائص (Attributes) تتحول إلى أعمدة (Columns). مثلًا كيان 'Book' يتحول لجدول Book بأعمدة Title, Edition, Year, Price, ISBN, Pages, Aisle, Description.</p>
+      <div class="deflist">
+        <div class="defitem"><div class="term">Primary Key</div><div class="desc">عمود (أو أكتر) يميّز كل صف بشكل فريد لا يتكرر (مثال: BOOK_ID في جدول BOOK)</div></div>
+        <div class="defitem"><div class="term">Foreign Key</div><div class="desc">عمود في جدول يشير لمفتاح أساسي لجدول آخر، وبكده بيربط الجدولين ببعض</div></div>
+      </div>
+      <div class="out-card" style="margin-top:14px;"><div class="bar">▸ مثال متكامل: مكتبة</div><pre>AUTHOR (المؤلف)        → AUTHOR_ID كمفتاح أساسي
+BOOK (الكتاب)          → BOOK_ID كمفتاح أساسي
+BORROWER (المستعير)    → BORROWER_ID كمفتاح أساسي
+AUTHOR_LIST (جدول ربط) → AUTHOR_ID + BOOK_ID كمفتاحين أجنبيين
+COPY (نسخة الكتاب)     → BOOK_ID كمفتاح أجنبي
+LOAN (الاستعارة)       → COPY_ID + BORROWER_ID كمفتاحين أجنبيين</pre></div>
+      <div class="note"><b>الخلاصة:</b> المفاتيح الأجنبية هي "الجسر" اللي بيربط الجداول المختلفة ببعض، وهي أساس فكرة "العلائقية" في قواعد البيانات، وبتمنع تكرار البيانات وتحافظ على تكاملها.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('keys', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 10 SELECT/DISTINCT -->
+    <section class="topic" id="select">
+      <div class="kicker"><span class="idx">10</span></div>
+      <h2>الاستعلامات البسيطة: SELECT و DISTINCT</h2>
+      <div class="grid2">
+        <div class="code-card"><div class="bar"><i></i><i></i><i></i><span>select_syntax.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">SELECT</span> &lt;attribute list&gt;
+<span class="k">FROM</span> &lt;table list&gt;
+<span class="k">WHERE</span> &lt;condition&gt;
+<span class="k">ORDER BY</span> &lt;attribute list&gt;</pre></div>
+        <div class="deflist" style="margin-top:0;">
+          <div class="defitem"><div class="term">SELECT</div><div class="desc">تحديد الأعمدة المطلوب عرضها</div></div>
+          <div class="defitem"><div class="term">FROM</div><div class="desc">تحديد الجدول المصدر</div></div>
+          <div class="defitem"><div class="term">WHERE</div><div class="desc">شرط الصفوف (اختياري)</div></div>
+          <div class="defitem"><div class="term">ORDER BY</div><div class="desc">ترتيب النتائج (اختياري)</div></div>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card"><div class="bar"><i></i><i></i><i></i><span>select_where.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">SELECT</span> dept_id, dept_name
+<span class="k">FROM</span> departments
+<span class="k">WHERE</span> location = <span class="s">'Cairo'</span>;</pre></div>
+        <div class="out-card"><div class="bar">▸ اقرأها كده</div><pre>عرض عمودين فقط، مع تصفية
+النتائج بحيث لا تظهر إلا
+الأقسام الموجودة في القاهرة.</pre></div>
+      </div>
+      <h2 style="font-size:18px; margin-top:26px;">DISTINCT — من غير تكرار</h2>
+      <table class="mini" style="margin-bottom:14px;">
+        <tr><th>Name</th><th>EmpNo</th><th>DNo</th><th>JobID</th></tr>
+        <tr><td>Ahmed</td><td>100</td><td>2</td><td>Sales_Rep</td></tr>
+        <tr><td>Mai</td><td>200</td><td>2</td><td>IT_PROG</td></tr>
+        <tr><td>Ali</td><td>300</td><td>2</td><td>Sales_Rep</td></tr>
+        <tr><td>Mahmoud</td><td>400</td><td>3</td><td>Sales_Rep</td></tr>
+      </table>
+      <div class="grid2">
+        <div class="code-card"><div class="bar"><i></i><i></i><i></i><span>distinct_one.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">SELECT DISTINCT</span> DNo
+<span class="k">FROM</span> employees;</pre></div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>DNo
+---
+2
+3</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card"><div class="bar"><i></i><i></i><i></i><span>distinct_multi.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">SELECT DISTINCT</span> DNo, JobID
+<span class="k">FROM</span> employees;</pre></div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>DNo | JobID
+----+----------
+2   | Sales_Rep
+2   | IT_PROG
+3   | Sales_Rep</pre></div>
+      </div>
+      <div class="note"><b>لاحظ:</b> (2, Sales_Rep) ظهرت مرة واحدة بس رغم تكرارها مرتين (Ahmed وAli)، لأن DISTINCT هنا بتقارن التركيبة الكاملة للعمودين معًا، مش كل عمود لوحده.</div>
+      <div class="try"><b>نصيحة للمذاكرة:</b> جرّب كل أمر بنفسك على أداة SQL مجانية (زي SQLite Online أو DB Fiddle) بدل الاكتفاء بالحفظ — الممارسة العملية أسرع طريقة ترسّخ بيها الأوامر دي في دماغك.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('select', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- QUIZ -->
+    <section id="quiz">
+      <div class="kicker"><span class="idx">🧠</span></div>
+      <h2>اختبر نفسك</h2>
+      <p class="lead">15 سؤال على الملخص كله — اختار إجابة وهيبان لك صح ولا غلط مع شرح سريع.</p>
+      <div class="quiz-summary">
+        <div>النتيجة</div>
+        <div class="score"><span id="scoreVal">0</span> / <span id="scoreTotal">15</span></div>
+        <button class="reset-btn" onclick="resetQuiz()">إعادة المحاولة</button>
+      </div>
+      <div id="quizList"></div>
+    </section>
+
+    <footer>SQL Session · Databases &amp; Queries — مرجع مذاكرة<span class="sup">ملخص وإعداد: محمد سلامة</span></footer>
+  </main>
+</div>
+
+<button id="toTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="ارجع لفوق">↑</button>
+
+<script>
+document.querySelectorAll('.navlink[data-target]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const target = document.getElementById(btn.dataset.target);
+    if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+});
+const links = document.querySelectorAll('#topnav .navlink[data-target]');
+const sections = [...document.querySelectorAll('section.topic, #quiz')];
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('revealed');
+      links.forEach(l=>l.classList.remove('active'));
+      const match = document.querySelector(`#topnav .navlink[data-target="${e.target.id}"]`);
+      if(match) match.classList.add('active');
+    }
+  });
+},{rootMargin:'-20% 0px -65% 0px'});
+sections.forEach(s=>io.observe(s));
+
+const TOPIC_IDS = ['intro','proscons','sqlacid','schema','categories','ddl','dml','dcltcl','keys','select'];
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  const pct = (h.scrollTop) / (h.scrollHeight - h.clientHeight) * 100;
+  document.getElementById('pageProgress').style.width = pct + '%';
+  document.getElementById('toTop').classList.toggle('show', h.scrollTop > 600);
+});
+
+function copyCode(btn){
+  const pre = btn.closest('.code-card').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    const old = btn.textContent;
+    btn.textContent = 'اتنسخ ✓';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent = old; btn.classList.remove('copied'); }, 1400);
+  }).catch(()=>{
+    btn.textContent = 'مش هيتنسخ 😕';
+    setTimeout(()=>{ btn.textContent = 'نسخ'; }, 1400);
+  });
+}
+
+const doneSet = new Set();
+function updateProgressUI(){
+  const pct = Math.round((doneSet.size / TOPIC_IDS.length) * 100);
+  document.getElementById('sideProgressFill').style.width = pct + '%';
+  document.getElementById('sideProgressText').textContent = pct + '%';
+  document.getElementById('heroProgressFill').style.width = pct + '%';
+  document.getElementById('heroProgressText').textContent = `${doneSet.size} / ${TOPIC_IDS.length} مواضيع خلّصتها`;
+  TOPIC_IDS.forEach(id=>{
+    const navLink = document.querySelector(`#topnav .navlink[data-target="${id}"]`);
+    if(navLink) navLink.classList.toggle('done', doneSet.has(id));
+  });
+}
+function toggleDone(id, btn){
+  if(doneSet.has(id)){
+    doneSet.delete(id);
+    btn.classList.remove('done');
+    btn.textContent = '✓ علّمت الموضوع ده كمذاكَر';
+  } else {
+    doneSet.add(id);
+    btn.classList.add('done');
+    btn.textContent = '✓ مذاكَر — كليك تاني للإلغاء';
+  }
+  updateProgressUI();
+}
+updateProgressUI();
+
+const QUESTIONS = [
+  {q:"إيه أشهر نوع من قواعد البيانات وهو محور هذا الكورس؟", opts:["NoSQL Database","Relational Database","Graph Database","Object-oriented Database"], a:1, ex:"قاعدة البيانات العلائقية (Relational) هي الأكثر شيوعًا ومحور الكورس، وفيها بيتم تحويل الكيانات لجداول والخصائص لأعمدة."},
+  {q:"إيه اللي بيربط الـ Application والمستخدمين الآخرين بقاعدة البيانات فعليًا؟", opts:["Storage Area مباشرة","DBMS (نظام إدارة قواعد البيانات)","SQL Server فقط","الـ Schema"], a:1, ex:"كل الأطراف (Application, Other Users, Other DBMS) بتتواصل مع قاعدة البيانات من خلال الـ DBMS، اللي بيعرّف السجلات وينفّذ الاستعلامات ويحدّث البيانات."},
+  {q:"إيه من التالي مش من مميزات استخدام قواعد البيانات؟", opts:["تقليل تكرار البيانات","تحسين أمان البيانات","التكلفة العالية للترخيص والصيانة","زيادة الاتساق (Consistency)"], a:2, ex:"التكلفة العالية هي عيب من عيوب قواعد البيانات، مش ميزة."},
+  {q:"SQL هي إيه بالظبط؟", opts:["نظام قاعدة بيانات زي MySQL", "لغة استعلام نتواصل بيها مع نظام إدارة قاعدة البيانات", "نوع من أنواع الـ Storage", "برنامج تشغيل فقط"], a:1, ex:"SQL مش قاعدة بيانات بحد ذاتها، هي 'لغة استعلام' بنستخدمها للتواصل مع الـ DBMS وإصدار الأوامر له."},
+  {q:"خاصية الـ Atomicity في ACID بتضمن إيه؟", opts:["المعاملة تُنفَّذ بالكامل أو لا تُنفَّذ أبدًا", "المعاملات لا تتأثر ببعضها", "البيانات تبقى محفوظة بعد أي عطل", "قاعدة البيانات تنتقل لحالة صحيحة"], a:0, ex:"Atomicity (الذرية) تضمن عدم التنفيذ الجزئي للمعاملة — إما كلها أو لا شيء."},
+  {q:"الـ Primary Key بيجمع بين قيدين، إيه هما؟", opts:["Check و Unique", "Not Null و Unique", "Foreign Key و Check", "Not Null و Referential Integrity"], a:1, ex:"Primary Key = Not Null (لا يقبل فراغ) + Unique (لا يتكرر)، وبيميّز كل صف بشكل فريد."},
+  {q:"أوامر زي CREATE و DROP و TRUNCATE بتتبع أي تصنيف؟", opts:["DML", "DDL", "DCL", "TCL"], a:1, ex:"DDL (Data Definition Language) بتغيّر بنية الجدول، وبتتحفظ تلقائيًا (Auto-committed)."},
+  {q:"إيه الفرق الجوهري بين DELETE FROM students; و DROP TABLE students;؟", opts:["مفيش فرق خالص", "DELETE بتمسح الصفوف والجدول يفضل موجود، DROP بتمسح الجدول بالكامل", "DROP أبطأ من DELETE فقط", "DELETE أمر DDL وDROP أمر DML"], a:1, ex:"DELETE (DML) بتمسح البيانات وتسيب بنية الجدول فاضية. DROP (DDL) بتمسح الجدول كله — أعمدة وبيانات."},
+  {q:"لو كتبت UPDATE students SET Address = 'X'; من غير WHERE، هيحصل إيه؟", opts:["هيدّي error فورًا", "التعديل هيتطبّق على كل صفوف الجدول دفعة واحدة", "مفيش حاجة هتتغيّر خالص", "هيسألك تختار صف معيّن"], a:1, ex:"من غير شرط WHERE، UPDATE بتطبّق التعديل على كل صف في الجدول — من أخطر الأخطاء الشائعة."},
+  {q:"أوامر TCL زي COMMIT و ROLLBACK بتشتغل مع إيه؟", opts:["أوامر DDL فقط", "أوامر DML فقط", "أوامر DCL فقط", "كل الأوامر بدون استثناء"], a:1, ex:"TCL بتُستخدم فقط مع أوامر DML (INSERT, DELETE, UPDATE)، ومينفعش تتستخدم مع DDL."},
+  {q:"GRANT و REVOKE بيتبعوا أي تصنيف؟", opts:["DDL", "DML", "DCL", "TCL"], a:2, ex:"DCL (Data Control Language) بتمنح أو تسحب صلاحيات المستخدمين في قاعدة البيانات."},
+  {q:"في مثال مكتبة الـ ERD، جدول AUTHOR_LIST بيربط إيه ببعض؟", opts:["المؤلفين بمكان إقامتهم", "الكتب بمؤلفيها عن طريق AUTHOR_ID و BOOK_ID", "المستعيرين بالنسخ فقط", "لا يربط أي شيء"], a:1, ex:"AUTHOR_LIST جدول ربط يحتوي على AUTHOR_ID و BOOK_ID كمفتاحين أجنبيين، لربط كل كتاب بمؤلفيه."},
+  {q:"Foreign Key وظيفتها إيه؟", opts:["تمنع تكرار الصفوف في نفس الجدول", "عمود في جدول يشير للمفتاح الأساسي لجدول آخر، وبكده يربط الجدولين", "ترتب الصفوف أبجديًا", "تحدد نوع البيانات المسموح به فقط"], a:1, ex:"Foreign Key هي 'الجسر' اللي بيربط جدولين ببعض عن طريق الإشارة لمفتاح أساسي (Primary Key) في جدول تاني."},
+  {q:"SELECT DISTINCT DNo, JobID FROM employees; هترجع صف واحد للتركيبة (2, Sales_Rep) حتى لو اتكررت مرتين، ليه؟", opts:["لأن DISTINCT بتحذف نص البيانات عشوائيًا", "لأن DISTINCT بتقارن التركيبة الكاملة للعمودين معًا، مش كل عمود لوحده", "لأن DNo رقم وJobID نص فمينفعش يتقارنوا", "دي غلطة والمفروض تظهر مرتين"], a:1, ex:"لما تحط أكتر من عمود بعد DISTINCT، بتتقارن التركيبة الكاملة للأعمدة كلها، مش كل عمود لوحده."},
+  {q:"في صيغة SELECT العامة، أي جزء بيحدد ترتيب النتائج وهو اختياري؟", opts:["FROM", "WHERE", "ORDER BY", "SELECT"], a:2, ex:"ORDER BY بترتب النتائج تصاعديًا أو تنازليًا حسب عمود معيّن، وهي جزء اختياري من الاستعلام."}
+];
+
+const list = document.getElementById('quizList');
+let answered = new Array(QUESTIONS.length).fill(false);
+let score = 0;
+
+function render(){
+  list.innerHTML = '';
+  QUESTIONS.forEach((item, qi)=>{
+    const card = document.createElement('div');
+    card.className = 'qcard';
+    card.innerHTML = `
+      <div class="qtext">${qi+1}. ${item.q}</div>
+      <div class="opts">
+        ${item.opts.map((o,oi)=>`<button class="opt" data-q="${qi}" data-o="${oi}">${o}</button>`).join('')}
+      </div>
+      <div class="explain" id="ex-${qi}">💡 ${item.ex}</div>
+    `;
+    list.appendChild(card);
+  });
+  document.querySelectorAll('.opt').forEach(btn=>{
+    btn.addEventListener('click', onAnswer);
+  });
+  document.getElementById('scoreTotal').textContent = QUESTIONS.length;
+}
+
+function onAnswer(e){
+  const qi = +e.target.dataset.q;
+  const oi = +e.target.dataset.o;
+  if(answered[qi]) return;
+  answered[qi] = true;
+  const item = QUESTIONS[qi];
+  const opts = document.querySelectorAll(`.opt[data-q="${qi}"]`);
+  opts.forEach(b=>b.disabled = true);
+  if(oi === item.a){
+    e.target.classList.add('correct');
+    score++;
+  } else {
+    e.target.classList.add('wrong');
+    opts[item.a].classList.add('correct');
+  }
+  document.getElementById(`ex-${qi}`).style.display = 'block';
+  document.getElementById('scoreVal').textContent = score;
+}
+
+function resetQuiz(){
+  answered = new Array(QUESTIONS.length).fill(false);
+  score = 0;
+  document.getElementById('scoreVal').textContent = 0;
+  render();
+}
+render();
+</script>
+</body>
+</html>

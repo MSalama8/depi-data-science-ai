@@ -1,0 +1,974 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session · SQL Views & Cloud Databases</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0a1120;
+    --bg-soft: #0f1a2e;
+    --panel: rgba(21,34,56,.6);
+    --line: #26374f;
+    --ink: #eef4fb;
+    --ink-dim: #90a6c4;
+    --sky: #38bdf8;
+    --sky-dim: #0e93c4;
+    --sunset: #fb923c;
+    --sunset-dim: #d9761e;
+    --rose: #fb7185;
+    --green: #6ee7a0;
+    --code-bg: #08101d;
+    --radius: 16px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0; overflow-x:hidden;
+    background:
+      radial-gradient(1100px 520px at 90% -6%, rgba(251,146,60,.12), transparent 60%),
+      radial-gradient(950px 520px at -6% 18%, rgba(56,189,248,.13), transparent 55%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Cairo',sans-serif;
+    line-height:1.75;
+    position:relative;
+  }
+  code, .mono{font-family:'JetBrains Mono',monospace;}
+  ::selection{background:rgba(56,189,248,.28); color:#fff;}
+
+  /* cursor spotlight — follows pointer, pure CSS var driven */
+  #spotlight{
+    position:fixed; inset:0; pointer-events:none; z-index:2; opacity:0;
+    background: radial-gradient(420px circle at var(--mx,50%) var(--my,50%), rgba(56,189,248,.08), transparent 70%);
+    transition:opacity .4s ease;
+  }
+  #spotlight.on{opacity:1;}
+
+  /* twinkling stars layer */
+  .stars{position:fixed; inset:0; pointer-events:none; z-index:0; overflow:hidden;}
+  .star{position:absolute; width:2px; height:2px; border-radius:50%; background:#bfe8ff; animation:twinkle 3.6s ease-in-out infinite;}
+  @keyframes twinkle{0%,100%{opacity:.15; transform:scale(1);} 50%{opacity:.9; transform:scale(1.6);}}
+
+  /* drifting cloud blobs — pure CSS, subtle */
+  .cloud-blob{
+    position:fixed; border-radius:50%; filter:blur(60px); pointer-events:none; z-index:0;
+    opacity:.55; animation:drift 26s ease-in-out infinite;
+  }
+  .cb1{width:340px; height:220px; background:radial-gradient(circle, rgba(56,189,248,.22), transparent 70%); top:6%; right:8%; animation-delay:0s;}
+  .cb2{width:280px; height:200px; background:radial-gradient(circle, rgba(251,146,60,.18), transparent 70%); bottom:14%; left:4%; animation-delay:-9s;}
+  .cb3{width:220px; height:160px; background:radial-gradient(circle, rgba(56,189,248,.14), transparent 70%); top:55%; right:22%; animation-delay:-17s;}
+  @keyframes drift{
+    0%,100%{transform:translate(0,0);}
+    50%{transform:translate(-24px, 22px);}
+  }
+
+  #pageProgress{
+    position:fixed; top:0; left:0; height:3px; width:0%;
+    background:linear-gradient(90deg, var(--sky), var(--sunset));
+    box-shadow:0 0 10px rgba(56,189,248,.6);
+    z-index:999; transition:width .1s linear;
+  }
+
+  ::-webkit-scrollbar{width:10px;}
+  ::-webkit-scrollbar-track{background:var(--bg-soft);}
+  ::-webkit-scrollbar-thumb{background:linear-gradient(var(--sky-dim), var(--sunset-dim)); border-radius:10px;}
+
+  .shell{display:grid; grid-template-columns: 270px 1fr; min-height:100vh; position:relative; z-index:1;}
+  @media (max-width: 880px){ .shell{grid-template-columns: 1fr;} .side{position:static; height:auto;} }
+
+  .side{
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    background:linear-gradient(180deg, var(--bg-soft), var(--bg));
+    padding:28px 18px; position:relative;
+  }
+  .side::after{
+    content:""; position:absolute; top:0; bottom:0; left:0; width:3px;
+    background:linear-gradient(180deg, var(--sky), var(--sunset) 55%, var(--rose));
+    box-shadow:0 0 16px rgba(56,189,248,.4), 0 0 26px rgba(251,146,60,.25);
+  }
+  @media (max-width: 880px){ .side::after{display:none;} }
+
+  .brand{display:flex; align-items:center; gap:11px; margin-bottom:8px; padding:0 6px;}
+  .brand .dot{
+    width:13px;height:13px;border-radius:4px;
+    background:linear-gradient(135deg, var(--sky), var(--sunset));
+    box-shadow:0 0 16px rgba(56,189,248,.55);
+  }
+  .brand b{font-size:15.5px; letter-spacing:.3px;}
+  .brand span{display:block; font-size:11px; color:var(--ink-dim);}
+
+  .supervisor{
+    margin:0 6px 14px; padding:12px 14px;
+    border:1px solid rgba(56,189,248,.28); border-radius:12px;
+    background:linear-gradient(135deg, rgba(56,189,248,.09), rgba(251,146,60,.07));
+    font-size:12px; color:var(--ink-dim); line-height:1.7;
+  }
+  .supervisor b{color:var(--sunset); display:block; font-size:12.5px; margin-bottom:2px; font-weight:800;}
+
+  .side-progress{margin:0 6px 20px; padding:12px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);}
+  .side-progress .lbl{display:flex; justify-content:space-between; font-size:11.5px; color:var(--ink-dim); margin-bottom:8px; font-family:'JetBrains Mono',monospace;}
+  .side-progress .lbl b{color:var(--sky); font-weight:700;}
+  .track{height:7px; border-radius:20px; background:var(--code-bg); overflow:hidden; border:1px solid var(--line);}
+  .fill{height:100%; width:0%; border-radius:20px; background:linear-gradient(90deg, var(--sky), var(--sunset)); transition:width .35s ease; box-shadow:0 0 8px rgba(56,189,248,.5);}
+
+  .ring-wrap{display:flex; align-items:center; justify-content:center; margin-bottom:10px;}
+  .ring-wrap svg{transform:rotate(-90deg);}
+  .ring-bg{fill:none; stroke:var(--code-bg); stroke-width:6;}
+  .ring-fg{fill:none; stroke:url(#ringGrad); stroke-width:6; stroke-linecap:round; transition:stroke-dashoffset .5s ease;}
+  .ring-label{
+    position:relative; margin-top:-46px; text-align:center; font-family:'JetBrains Mono',monospace;
+    font-size:13px; color:var(--sky); font-weight:700; pointer-events:none;
+  }
+
+  .hero-art{
+    position:absolute; left:22px; bottom:14px; width:150px; height:150px; opacity:.85;
+    pointer-events:none; z-index:0;
+  }
+  @media (max-width:900px){ .hero-art{display:none;} }
+  .hero-art .float1{animation:floaty 5s ease-in-out infinite;}
+  .hero-art .float2{animation:floaty 6.5s ease-in-out infinite; animation-delay:-2s;}
+  @keyframes floaty{0%,100%{transform:translateY(0);} 50%{transform:translateY(-8px);}}
+  .hero-art .dash{stroke-dasharray:6 7; animation:dashflow 2.4s linear infinite;}
+  @keyframes dashflow{to{stroke-dashoffset:-52;}}
+  .hero-art .pulse-dot{animation:dotpulse 1.8s ease-in-out infinite;}
+  @keyframes dotpulse{0%,100%{opacity:.35; r:2.6;} 50%{opacity:1; r:4;}}
+
+  nav .navlink{
+    display:flex; align-items:center; gap:10px; width:100%;
+    padding:9.5px 11px; border-radius:10px; color:var(--ink-dim);
+    text-decoration:none; font-size:13.5px; margin-bottom:2px;
+    border:1px solid transparent; transition:.2s ease;
+    position:relative; background:none; font-family:'Cairo',sans-serif;
+    cursor:pointer; text-align:right;
+  }
+  nav .navlink .n{
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; color:var(--sunset);
+    width:22px; text-align:center;
+  }
+  nav .navlink:hover{background:var(--panel); color:var(--ink); transform:translateX(-2px);}
+  nav .navlink.active{
+    background:linear-gradient(90deg, rgba(56,189,248,.15), rgba(251,146,60,.08));
+    border-color:rgba(56,189,248,.35); color:var(--sky);
+  }
+  nav .navlink.active .n{color:var(--sky);}
+  nav .navlink .check{margin-right:auto; font-size:12px; color:var(--green); opacity:0; transition:.2s;}
+  nav .navlink.done .check{opacity:1;}
+  .nav-quiz{margin-top:16px; padding-top:16px; border-top:1px dashed var(--line);}
+
+  main{padding:46px clamp(20px,4vw,68px) 90px; position:relative; z-index:1;}
+  .hero{
+    background:linear-gradient(155deg, var(--panel), var(--bg-soft) 70%);
+    border:1px solid var(--line); border-radius:22px;
+    padding:38px clamp(22px,4vw,48px); margin-bottom:42px; position:relative; overflow:hidden;
+    box-shadow:0 30px 60px -30px rgba(0,0,0,.7);
+    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
+  }
+  .hero::before{
+    content:""; position:absolute; inset:0; border-radius:22px; padding:1px;
+    background:linear-gradient(120deg, rgba(56,189,248,.5), transparent 30%, transparent 70%, rgba(251,146,60,.5));
+    -webkit-mask:linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite:xor; mask-composite:exclude; pointer-events:none;
+  }
+  .hero::after{
+    content:"CREATE VIEW ⛅"; position:absolute; left:-8px; bottom:-16px;
+    font-family:'JetBrains Mono',monospace; font-size:38px; color:rgba(56,189,248,.06);
+    letter-spacing:1px; pointer-events:none;
+  }
+  .eyebrow{
+    font-family:'JetBrains Mono',monospace; font-size:12.5px; letter-spacing:1.5px;
+    background:linear-gradient(90deg, var(--sky), var(--sunset));
+    -webkit-background-clip:text; background-clip:text; color:transparent; font-weight:700;
+  }
+  .hero h1{font-size:clamp(26px,4vw,38px); margin:11px 0 9px; font-weight:900;}
+  .hero p{color:var(--ink-dim); max-width:700px; margin:0; font-size:15px;}
+  .hero-credit{margin:10px 0 0; font-size:12.5px; color:var(--ink-dim); font-family:'JetBrains Mono',monospace; direction:ltr; unicode-bidi:embed; text-align:right;}
+  .hero-tags{display:flex; flex-wrap:wrap; gap:9px; margin-top:22px;}
+  .tag{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-dim);
+    border:1px solid var(--line); padding:6px 12px; border-radius:20px; background:var(--code-bg);
+    transition:.2s;
+  }
+  .tag:hover{border-color:rgba(56,189,248,.4); color:var(--sky);}
+
+  .hero-progress{margin-top:24px; display:flex; align-items:center; gap:14px;}
+  .hero-progress .track{flex:1; height:9px;}
+  .hero-progress span{font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--sky); white-space:nowrap;}
+
+  section.topic{
+    border-top:1px solid var(--line); padding-top:36px; margin-top:36px; scroll-margin-top:24px;
+    opacity:0; transform:translateY(14px); transition:opacity .55s ease, transform .55s ease;
+  }
+  section.topic.revealed{opacity:1; transform:translateY(0);}
+  section.topic .kicker{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
+  section.topic .kicker .idx{
+    font-family:'JetBrains Mono',monospace; color:var(--sky); font-size:13px;
+    border:1px solid var(--sky-dim); border-radius:9px; padding:2px 10px;
+    background:rgba(56,189,248,.06);
+  }
+  section.topic h2{font-size:23.5px; margin:7px 0 12px; font-weight:800;}
+  section.topic .lead{color:var(--ink-dim); max-width:780px; margin-bottom:19px; font-size:15px;}
+
+  .grid2{display:grid; grid-template-columns: 1.1fr .9fr; gap:18px; align-items:start;}
+  @media (max-width:760px){.grid2{grid-template-columns:1fr;}}
+
+  .code-card{
+    background:var(--code-bg); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden; transition:transform .15s ease, box-shadow .25s ease, border-color .25s ease;
+    position:relative; transform-style:preserve-3d; will-change:transform;
+  }
+  .code-card:hover{border-color:rgba(251,146,60,.45); box-shadow:0 20px 42px -18px rgba(251,146,60,.35);}
+  .code-card .bar{
+    display:flex; align-items:center; gap:7px; padding:10px 14px; border-bottom:1px solid var(--line);
+    background:#0b1526;
+  }
+  .code-card .bar i{width:9px;height:9px;border-radius:50%;background:#25344c;}
+  .code-card .bar span{margin-right:auto; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim);}
+  .copy-btn{
+    background:transparent; border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'JetBrains Mono',monospace; font-size:10.5px; padding:4px 9px; border-radius:7px;
+    cursor:pointer; transition:.2s;
+  }
+  .copy-btn:hover{border-color:var(--sky); color:var(--sky);}
+  .copy-btn.copied{border-color:var(--green); color:var(--green);}
+  .code-card pre{
+    margin:0; padding:17px; direction:ltr; text-align:left; overflow-x:auto;
+    font-family:'JetBrains Mono',monospace; font-size:13px; color:#e8f2fc; line-height:1.68;
+  }
+  .code-card pre .c{color:#4d6382;}
+  .code-card pre .k{color:var(--sunset);}
+  .code-card pre .s{color:#fcd34d;}
+  .code-card pre .f{color:var(--sky);}
+
+  .out-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;
+    transition:.25s ease; backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+    transform-style:preserve-3d; will-change:transform;
+  }
+  .out-card:hover{border-color:rgba(56,189,248,.35); box-shadow:0 20px 40px -22px rgba(56,189,248,.25);}
+  .out-card .bar{padding:10px 14px; border-bottom:1px solid var(--line); font-size:11.5px; color:var(--sky); font-family:'JetBrains Mono',monospace;}
+  .out-card pre{margin:0; padding:17px; direction:ltr; text-align:left; font-family:'JetBrains Mono',monospace; font-size:12.6px; color:#d3e6f7; white-space:pre-wrap; word-break:break-word;}
+
+  .note{
+    margin-top:15px; padding:13px 17px; border-radius:11px;
+    background:rgba(251,146,60,.08); border:1px solid rgba(251,146,60,.28);
+    font-size:13.5px; color:#ffdcb0;
+  }
+  .note b{color:var(--sunset);}
+  .try{
+    margin-top:15px; padding:15px 17px; border-radius:11px;
+    background:rgba(56,189,248,.08); border:1px dashed rgba(56,189,248,.4);
+    font-size:14px;
+  }
+  .try b{color:var(--sky);}
+  .warn{
+    margin-top:15px; padding:13px 17px; border-radius:11px;
+    background:rgba(251,113,133,.08); border:1px solid rgba(251,113,133,.3);
+    font-size:13.5px; color:#ffc2cc;
+  }
+  .warn b{color:var(--rose);}
+
+  table.mini{width:100%; border-collapse:collapse; margin-top:14px; font-size:13.5px; font-family:'Cairo',sans-serif;}
+  table.mini th, table.mini td{border:1px solid var(--line); padding:9px 12px; text-align:right; font-family:'Cairo',sans-serif;}
+  table.mini th{background:var(--panel); color:var(--sky); font-size:13px; font-weight:700;}
+  table.mini td{color:var(--ink-dim); font-size:13.5px;}
+  table.mini code{
+    font-family:'JetBrains Mono',monospace; direction:ltr; unicode-bidi:embed; display:inline-block;
+    color:var(--sky); background:var(--code-bg); border:1px solid var(--line);
+    padding:2px 7px; border-radius:6px; font-size:12px;
+  }
+  .ltr{direction:ltr; unicode-bidi:embed; display:inline-block;}
+
+  .mark-row{display:flex; justify-content:flex-end; margin-top:18px;}
+  .mark-btn{
+    background:var(--code-bg); border:1px solid var(--line); color:var(--ink-dim);
+    font-family:'Cairo',sans-serif; font-size:13px; font-weight:700; padding:9px 16px;
+    border-radius:10px; cursor:pointer; transition:.2s; display:flex; align-items:center; gap:7px;
+  }
+  .mark-btn:hover{border-color:var(--sky-dim); color:var(--ink);}
+  .mark-btn.done{border-color:var(--green); color:var(--green); background:rgba(110,231,160,.08);}
+
+  #quiz{border-top:1px solid var(--line); padding-top:36px; margin-top:52px;}
+  .qcard{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:21px 23px; margin-bottom:16px; transition:.2s;
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  }
+  .qcard:hover{border-color:rgba(56,189,248,.25);}
+  .qcard .qtext{font-weight:700; margin-bottom:14px; font-size:15.5px;}
+  .qcard .opts{display:grid; gap:9px;}
+  .opt{
+    display:block; width:100%; text-align:right; cursor:pointer;
+    background:var(--code-bg); border:1px solid var(--line); color:var(--ink);
+    padding:11px 15px; border-radius:10px; font-family:'Cairo',sans-serif; font-size:14px;
+    transition:.15s;
+  }
+  .opt:hover{border-color:var(--sky-dim);}
+  .opt.correct{border-color:var(--green); background:rgba(110,231,160,.13); color:var(--green);}
+  .opt.wrong{border-color:var(--rose); background:rgba(251,113,133,.12); color:var(--rose);}
+  .opt[disabled]{cursor:default;}
+  .explain{display:none; margin-top:12px; font-size:13.5px; color:var(--ink-dim); border-top:1px dashed var(--line); padding-top:10px;}
+
+  .quiz-summary{
+    background:linear-gradient(155deg, var(--panel), var(--bg-soft));
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:23px; text-align:center; margin-bottom:20px;
+    backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px);
+  }
+  .quiz-summary .score{
+    font-family:'JetBrains Mono',monospace; font-size:36px; font-weight:700;
+    background:linear-gradient(90deg, var(--sky), var(--sunset));
+    -webkit-background-clip:text; background-clip:text; color:transparent;
+  }
+  .reset-btn{
+    margin-top:11px; background:linear-gradient(90deg, var(--sky), #8fe0ff); color:#032a3a; border:none; font-weight:700;
+    padding:10px 22px; border-radius:10px; cursor:pointer; font-family:'Cairo',sans-serif; font-size:14px;
+    transition:.2s;
+  }
+  .reset-btn:hover{transform:translateY(-1px); box-shadow:0 10px 22px -10px rgba(56,189,248,.6);}
+
+  #toTop{
+    position:fixed; bottom:22px; left:22px; width:42px; height:42px; border-radius:50%;
+    background:var(--panel); border:1px solid var(--line); color:var(--sky); font-size:18px;
+    display:flex; align-items:center; justify-content:center; cursor:pointer;
+    opacity:0; pointer-events:none; transition:.25s; z-index:998;
+  }
+  #toTop.show{opacity:1; pointer-events:auto; box-shadow:0 0 14px rgba(56,189,248,.35);}
+  #toTop:hover{border-color:var(--sky);}
+
+  footer{text-align:center; color:var(--ink-dim); font-size:12.5px; padding:34px 0 10px; position:relative; z-index:1;}
+  footer .sup{display:block; margin-top:6px; color:var(--sky-dim); font-family:'JetBrains Mono',monospace; font-size:11.5px;}
+</style>
+</head>
+<body>
+<div class="stars" id="starsLayer"></div>
+<div id="spotlight"></div>
+<div class="cloud-blob cb1"></div>
+<div class="cloud-blob cb2"></div>
+<div class="cloud-blob cb3"></div>
+<div id="pageProgress"></div>
+<div class="shell">
+
+  <aside class="side">
+    <div class="brand"><div class="dot"></div><div><b>Views &amp; Cloud DB</b><span>SQL Views · IBM Db2 on Cloud</span></div></div>
+    <div class="supervisor"><b>Instructor</b>Eng. Ahmed Salem<br><b style="margin-top:6px;">Guide by</b>Mohamed Mahmoud Salama</div>
+    <div class="side-progress">
+      <div class="ring-wrap">
+        <svg width="88" height="88" viewBox="0 0 88 88">
+          <defs>
+            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#38bdf8"/>
+              <stop offset="100%" stop-color="#fb923c"/>
+            </linearGradient>
+          </defs>
+          <circle class="ring-bg" cx="44" cy="44" r="38"></circle>
+          <circle class="ring-fg" id="ringFg" cx="44" cy="44" r="38" stroke-dasharray="238.76" stroke-dashoffset="238.76"></circle>
+        </svg>
+      </div>
+      <div class="ring-label" id="sideProgressText">0%</div>
+      <div class="lbl" style="margin-top:10px;"><span>تقدّمك في المذاكرة</span></div>
+      <div class="track"><div class="fill" id="sideProgressFill"></div></div>
+    </div>
+    <nav id="topnav">
+      <button type="button" class="navlink" data-target="intro"><span class="n">01</span> مقدمة عن Views<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="advantages"><span class="n">02</span> مميزات الـ Views<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="simple-complex"><span class="n">03</span> Simple vs Complex<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="create"><span class="n">04</span> إنشاء View<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="dml"><span class="n">05</span> التعامل معاها زي جدول<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="checkoption"><span class="n">06</span> WITH CHECK OPTION<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="modify-drop"><span class="n">07</span> تعديل وحذف View<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="complexview"><span class="n">08</span> Views معقّدة (Subqueries)<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="queryview"><span class="n">09</span> استعلام على View معقّدة<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="cloud"><span class="n">10</span> قواعد بيانات سحابية<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="deploy"><span class="n">11</span> نشر Db2 على IBM Cloud<span class="check">✓</span></button>
+      <button type="button" class="navlink" data-target="retrieve"><span class="n">12</span> استرجاع صفوف حقيقي<span class="check">✓</span></button>
+      <div class="nav-quiz">
+        <button type="button" class="navlink" data-target="quiz">🧠 اختبر نفسك (كويز)</button>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="hero">
+      <svg class="hero-art" viewBox="0 0 150 150" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="cloudGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.9"/>
+            <stop offset="100%" stop-color="#fb923c" stop-opacity="0.7"/>
+          </linearGradient>
+        </defs>
+        <g class="float1">
+          <path d="M30 55 a16 16 0 0 1 4-31 a22 22 0 0 1 42-6 a17 17 0 0 1 6 33 z"
+                fill="none" stroke="url(#cloudGrad)" stroke-width="2.4" opacity="0.85"/>
+        </g>
+        <g class="float2">
+          <rect x="52" y="80" width="30" height="34" rx="4" fill="none" stroke="#38bdf8" stroke-width="2.2" opacity="0.8"/>
+          <ellipse cx="67" cy="80" rx="15" ry="5" fill="none" stroke="#38bdf8" stroke-width="2.2" opacity="0.8"/>
+          <line x1="52" y1="90" x2="82" y2="90" stroke="#38bdf8" stroke-width="1.4" opacity="0.5"/>
+          <line x1="52" y1="100" x2="82" y2="100" stroke="#38bdf8" stroke-width="1.4" opacity="0.5"/>
+        </g>
+        <path class="dash" d="M67 60 L67 80" stroke="#fb923c" stroke-width="2" opacity="0.7"/>
+        <circle class="pulse-dot" cx="67" cy="60" r="3" fill="#fb923c"/>
+        <circle class="pulse-dot" cx="30" cy="30" r="2.6" fill="#38bdf8" style="animation-delay:-0.6s"/>
+        <circle class="pulse-dot" cx="95" cy="40" r="2.6" fill="#38bdf8" style="animation-delay:-1.2s"/>
+      </svg>
+      <div class="eyebrow">SESSION · SQL VIEWS &amp; CLOUD</div>
+      <h1>Views، وقواعد البيانات على السحابة</h1>
+      <p>مرجع مذاكرة تفاعلي — إزاي تبني "جدول افتراضي" (View) فوق جداولك الحقيقية، وإزاي تنشر قاعدة بيانات كاملة على IBM Cloud من غير ما تركّب أي سيرفر بنفسك. كل الأكواد هنا حقيقية من تمارين الجلسة على قاعدة بيانات <span class="ltr">COMPANY</span>.</p>
+      <p class="hero-credit">Course by Eng. Ahmed Salem · Study guide compiled by Mohamed Mahmoud Salama</p>
+      <div class="hero-tags">
+        <span class="tag">CREATE VIEW</span><span class="tag">Simple / Complex View</span><span class="tag">WITH CHECK OPTION</span>
+        <span class="tag">CREATE OR REPLACE</span><span class="tag">DROP VIEW</span><span class="tag">Correlated Subquery</span>
+        <span class="tag">Cloud Database</span><span class="tag">IBM Db2</span><span class="tag">Service Credentials</span>
+      </div>
+      <div class="hero-progress">
+        <div class="track"><div class="fill" id="heroProgressFill"></div></div>
+        <span id="heroProgressText">0 / 12 مواضيع خلّصتها</span>
+      </div>
+    </div>
+
+    <!-- 01 INTRO -->
+    <section class="topic" id="intro">
+      <div class="kicker"><span class="idx">01</span></div>
+      <h2>مقدمة: الـ View يعني إيه؟</h2>
+      <p class="lead">الـ <b>View</b> هو "جدول منطقي" (logical table) مبني على جدول حقيقي أو View تاني — لكنه <b>مالوش بيانات خاصة بيه أبدًا</b>. فكّر فيه كإنه "شباك" (window) بتشوف من خلاله بيانات جداول تانية، أو تعدّلها.</p>
+      <div class="grid2">
+        <div class="out-card"><div class="bar">▸ فكّر فيها كده</div><pre>الجدول الحقيقي (employee)
+        |
+        | (View = شباك بيطل عليه)
+        v
+Employee_D5  →  مش بيخزن بيانات
+                بيعرض بس صفوف dno=5
+                من جدول employee</pre></div>
+        <table class="mini">
+          <tr><th>المصطلح</th><th>المعنى</th></tr>
+          <tr><td>View</td><td>جدول منطقي، مبني على جدول أو View تاني</td></tr>
+          <tr><td>Base Table</td><td>الجدول الحقيقي اللي الـ View مبني عليه</td></tr>
+          <tr><td>مخزّن إزاي؟</td><td>كجملة <code>SELECT</code> بس داخل الـ data dictionary، مش كبيانات</td></tr>
+        </table>
+      </div>
+      <div class="note"><b>أهم نقطة:</b> لأن الـ View مالوش بيانات خاصة بيه، أي تعديل تعمله من خلاله (زي <code>UPDATE</code> أو <code>INSERT</code>) بيتوجّه فعليًا لجدوله الأساسي (base table) — مش بيتخزن في "مكان تاني".</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('intro', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 02 ADVANTAGES -->
+    <section class="topic" id="advantages">
+      <div class="kicker"><span class="idx">02</span></div>
+      <h2>مميزات استخدام الـ Views</h2>
+      <p class="lead">مش بس "شكل تاني" للجدول — الـ Views بتحل مشاكل حقيقية في تصميم قواعد البيانات.</p>
+      <table class="mini">
+        <tr><th>الميزة</th><th>يعني إيه عمليًا</th></tr>
+        <tr><td>Restrict data access</td><td>تدّي مستخدم معيّن يشوف بس عمودين أو صفوف معينة، مش الجدول كله</td></tr>
+        <tr><td>Make complex queries easy</td><td>تكتب JOIN وشروط معقّدة مرة واحدة جوه الـ View، وبعدين تستعلم منه بسهولة زي أي جدول عادي</td></tr>
+        <tr><td>Provide data independence</td><td>لو شكل الجدول الحقيقي اتغيّر، تقدر تعدّل الـ View بس من غير ما تكسر كل الاستعلامات اللي بتستخدمه</td></tr>
+        <tr><td>Present different views of the same data</td><td>نفس الجدول، يتعرض بأشكال مختلفة لأقسام مختلفة حسب احتياج كل واحد</td></tr>
+      </table>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('advantages', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 03 SIMPLE VS COMPLEX -->
+    <section class="topic" id="simple-complex">
+      <div class="kicker"><span class="idx">03</span></div>
+      <h2>Simple Views مقابل Complex Views</h2>
+      <p class="lead">مش كل الـ Views زي بعض — الفرق ده بيحدد هل تقدر تعمل عليها <code>UPDATE/INSERT/DELETE</code> مباشرة ولا لأ.</p>
+      <table class="mini">
+        <tr><th>الخاصية</th><th>Simple View</th><th>Complex View</th></tr>
+        <tr><td>عدد الجداول</td><td>واحد بس</td><td>واحد أو أكتر (JOIN)</td></tr>
+        <tr><td>فيها دوال (functions)؟</td><td>لأ</td><td>ممكن (زي <code>COUNT</code>, <code>SUM</code>)</td></tr>
+        <tr><td>فيها تجميع بيانات (GROUP BY)؟</td><td>لأ</td><td>ممكن</td></tr>
+        <tr><td>عمليات DML من خلالها؟</td><td>آه، غالبًا</td><td>مش دايمًا</td></tr>
+      </table>
+      <div class="note"><b>ليه Complex View مش دايمًا تقبل DML؟</b> لو الـ View فيه <code>GROUP BY</code> أو دالة تجميعية زي <code>COUNT(*)</code>، مفيش معنى منطقي لـ "عدّل السطر ده" لإن السطر ده أصلاً ناتج حساب مش صف حقيقي من جدول واحد.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('simple-complex', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 04 CREATE -->
+    <section class="topic" id="create">
+      <div class="kicker"><span class="idx">04</span></div>
+      <h2>CREATE VIEW — إنشاء View</h2>
+      <p class="lead">الصيغة العامة، ومثال حقيقي من الجلسة: View بيعرض بس الموظفين اللي قسمهم رقم 5.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>syntax.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">CREATE VIEW</span> view [ (column1 [ , column2 ] ... ) ]
+<span class="k">AS</span> subquery
+[ <span class="k">WITH CHECK OPTION</span> ] ;</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>employee_d5.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">CREATE VIEW</span> Employee_D5
+<span class="k">AS</span>
+<span class="k">select</span> * <span class="k">from</span> employee <span class="k">where</span> dno = <span class="s">5</span>;
+
+<span class="k">select</span> * <span class="k">from</span> Employee_D5;</pre>
+        </div>
+      </div>
+      <div class="note"><b>لاحظ:</b> بعد إنشاء الـ View، تقدر تستعلم عليه بـ <code>SELECT</code> زي أي جدول عادي بالظبط — مش هتلاقي فرق في شكل النتيجة، رغم إنه مش جدول حقيقي.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('create', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 05 DML THROUGH VIEW -->
+    <section class="topic" id="dml">
+      <div class="kicker"><span class="idx">05</span></div>
+      <h2>UPDATE و INSERT من خلال View</h2>
+      <p class="lead">لأن Employee_D5 هو Simple View (جدول واحد، من غير دوال أو تجميع)، أي تعديل تعمله من خلاله بيتوجّه فعليًا لجدول employee الحقيقي.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>update_via_view.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">update</span> Employee_D5
+<span class="k">set</span> fname = <span class="s">'Ahmed'</span>
+<span class="k">where</span> ssn = <span class="s">'333445555'</span>;</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>insert_via_view.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">insert into</span> Employee_D5 <span class="k">values</span> (
+<span class="s">'sara'</span>, <span class="s">'A'</span>, <span class="s">'English'</span>, <span class="s">'1212'</span>,
+<span class="s">'1972-07-31'</span>, <span class="s">'5631 Rice, Houston, TX'</span>,
+<span class="s">'f'</span>, <span class="s">25000.00</span>, <span class="s">'333445555'</span>, <span class="s">5</span>
+);</pre>
+        </div>
+      </div>
+      <div class="note"><b>مهم:</b> الصف الجديد اللي اتضاف بـ <code>INSERT</code> فعليًا اتحط جوه جدول <code>employee</code> نفسه (مش جوه "الـ View")، وطالما قيمة <code>dno</code> بتاعته = 5، هيظهر تلقائيًا لو استعلمت على <code>Employee_D5</code> تاني. الـ View بيعكس أي تغيير في الجدول الأساسي لحظيًا.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('dml', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 06 CHECK OPTION -->
+    <section class="topic" id="checkoption">
+      <div class="kicker"><span class="idx">06</span></div>
+      <h2>WITH CHECK OPTION — منع البيانات "الشاردة"</h2>
+      <p class="lead">لو عملت View بشرط WHERE، إيه اللي يمنعك تضيف صف من خلاله ميحققش الشرط ده؟ هنا بالظبط دور <code>WITH CHECK OPTION</code>.</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>employee_d1.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre><span class="k">CREATE VIEW</span> Employee_D1
+<span class="k">AS</span>
+<span class="k">select</span> * <span class="k">from</span> employee <span class="k">where</span> dno = <span class="s">1</span> <span class="k">with check option</span>;</pre>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>insert_ok.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c">-- dno = 1 → بيحقق شرط الـ View</span>
+<span class="k">insert into</span> Employee_D1 <span class="k">values</span> (
+<span class="s">'aya'</span>, <span class="s">'A'</span>, <span class="s">'English'</span>, <span class="s">'1001'</span>, ...,
+<span class="s">'333445555'</span>, <span class="s">1</span>
+);</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>INSERT 0 1
+(نجح — الصف بيحقق dno = 1)</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>insert_fails.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="c">-- radwa عندها dno = 4، مش 1!</span>
+<span class="k">insert into</span> Employee_D1 <span class="k">values</span> (
+<span class="s">'radwa'</span>, <span class="s">'A'</span>, <span class="s">'English'</span>, <span class="s">'1002'</span>, ...,
+<span class="s">'333445555'</span>, <span class="s">4</span>
+);</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output المتوقّع</div><pre>ERROR: new row violates check
+option for view "employee_d1"
+
+(اترفض! dno=4 مش بيحقق شرط dno=1)</pre></div>
+      </div>
+      <div class="warn"><b>خطر شائع جدًا:</b> من غير <code>WITH CHECK OPTION</code>، الـ INSERT ده كان هينجح عادي (رغم إن الصف مش هيظهر بعد كده لو استعلمت على Employee_D1 تاني، لإنه مش بيحقق شرطها) — وده سلوك مربك. <code>WITH CHECK OPTION</code> بيمنع المشكلة دي من الأساس برفض أي INSERT أو UPDATE هيخرج بره حدود شرط الـ View.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('checkoption', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 07 MODIFY / DROP -->
+    <section class="topic" id="modify-drop">
+      <div class="kicker"><span class="idx">07</span></div>
+      <h2>تعديل وحذف Views</h2>
+      <p class="lead"><code>CREATE OR REPLACE VIEW</code> بتخليك تغيّر تعريف View موجود من غير ما تحذفه وتعمله تاني، و<code>DROP VIEW</code> بتشيله بالكامل.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>replace_view.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">CREATE OR REPLACE VIEW</span> vw_work_hrs
+<span class="k">AS</span>
+<span class="k">SELECT</span> Fname, Lname, Pname, Hours
+<span class="k">FROM</span> Employee, Project, Works_on
+<span class="k">WHERE</span> SSN = ESSN <span class="k">AND</span> PNO = PNUMBER
+      <span class="k">AND</span> Dno = <span class="s">5</span>;</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>drop_view.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">DROP VIEW</span> Employee_D5;</pre>
+        </div>
+      </div>
+      <div class="note"><b>لاحظ:</b> <code>DROP VIEW</code> بتمسح تعريف الـ View بس (جملة الـ SELECT المخزّنة) — مش بتمسح أي بيانات من جدول employee الأصلي، لإن الـ View أصلاً مالوش بيانات خاصة بيه.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('modify-drop', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 08 COMPLEX VIEW -->
+    <section class="topic" id="complexview">
+      <div class="kicker"><span class="idx">08</span></div>
+      <h2>Complex View باستخدام Subqueries متعددة</h2>
+      <p class="lead">مثال حقيقي من الجلسة: View اسمه <code>reports</code> بيحسب لكل قسم — عدد الموظفين، إجمالي ومتوسط الرواتب، عدد المشاريع، وإجمالي ساعات العمل، كل واحدة بـ subquery منفصلة.</p>
+      <div class="code-card">
+        <div class="bar"><i></i><i></i><i></i><span>reports_view.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+        <pre><span class="k">CREATE VIEW</span> reports
+<span class="k">AS</span>
+<span class="k">SELECT</span>
+    d.dname,
+    <span class="c">/* عدد الموظفين */</span>
+    (<span class="k">SELECT</span> <span class="f">COUNT</span>(*) <span class="k">FROM</span> employee e
+     <span class="k">WHERE</span> e.dno = d.dnumber) <span class="k">AS</span> employee_count,
+
+    <span class="c">/* إجمالي الرواتب */</span>
+    (<span class="k">SELECT</span> <span class="f">SUM</span>(e.salary) <span class="k">FROM</span> employee e
+     <span class="k">WHERE</span> e.dno = d.dnumber) <span class="k">AS</span> total_salary,
+
+    <span class="c">/* متوسط الرواتب */</span>
+    (<span class="k">SELECT</span> <span class="f">AVG</span>(e.salary) <span class="k">FROM</span> employee e
+     <span class="k">WHERE</span> e.dno = d.dnumber) <span class="k">AS</span> average_salary,
+
+    <span class="c">/* عدد المشاريع */</span>
+    (<span class="k">SELECT</span> <span class="f">COUNT</span>(*) <span class="k">FROM</span> project p
+     <span class="k">WHERE</span> p.dnum = d.dnumber) <span class="k">AS</span> project_count,
+
+    <span class="c">/* إجمالي ساعات المشاريع */</span>
+    (<span class="k">SELECT</span> <span class="f">SUM</span>(w.hours) <span class="k">FROM</span> project p
+     <span class="k">JOIN</span> works_on w <span class="k">ON</span> p.pnumber = w.pno
+     <span class="k">WHERE</span> p.dnum = d.dnumber) <span class="k">AS</span> total_project_hours
+
+<span class="k">FROM</span> department d
+<span class="k">ORDER BY</span> total_salary <span class="k">DESC</span>;</pre>
+      </div>
+      <div class="note"><b>ليه ده Complex View؟</b> فيه أكتر من جدول (department, employee, project, works_on)، فيه دوال تجميعية (<code>COUNT</code>, <code>SUM</code>, <code>AVG</code>)، وناتجه أعمدة محسوبة مش نسخة مباشرة من صف حقيقي — فمينفعش تعمل عليه <code>INSERT</code> أو <code>UPDATE</code> مباشرة.</div>
+      <div class="try"><b>Correlated Subquery:</b> كل subquery هنا بيستخدم <code>d.dnumber</code> من الاستعلام الخارجي جوّاه (<code>WHERE e.dno = d.dnumber</code>) — يعني بيتنفّذ من جديد لكل قسم لوحده. ده اسمه Correlated Subquery: الاستعلام الداخلي "مرتبط" بصف معيّن من الاستعلام الخارجي، عكس subquery عادي بيتنفّذ مرة واحدة بس.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('complexview', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 09 QUERY VIEW -->
+    <section class="topic" id="queryview">
+      <div class="kicker"><span class="idx">09</span></div>
+      <h2>الاستعلام على Complex View زي أي جدول</h2>
+      <p class="lead">أهم فايدة عملية للـ View: بعد كل التعقيد اللي فوق، بقى تقدر تستعلم على <code>reports</code> بسهولة زي أي جدول عادي — كل الـ subqueries المعقدة اختفت وبقت "شغل جاهز" ورا الكواليس.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>query_reports.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">select</span> * <span class="k">from</span> reports;
+
+<span class="k">select</span> dname, employee_count
+<span class="k">from</span> reports
+<span class="k">where</span> employee_count &gt; <span class="s">0</span>;</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>query_reports_full.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre><span class="k">select</span> dname, employee_count, total_salary,
+       project_count
+<span class="k">from</span> reports
+<span class="k">where</span> employee_count &gt; <span class="s">0</span>;</pre>
+        </div>
+      </div>
+      <div class="note"><b>القيمة الحقيقية للـ View هنا:</b> بدل ما تكرر كل الـ subqueries المعقدة دي كل مرة عايز تشوف تقرير الأقسام، كتبتها مرة واحدة جوه <code>reports</code>، وبقيت تستعلم عليها بجملة <code>SELECT</code> بسيطة زي أي جدول — ده بالظبط معنى "Make complex queries easy" اللي اتكلمنا عليه في الميزات.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('queryview', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 10 CLOUD DATABASES -->
+    <section class="topic" id="cloud">
+      <div class="kicker"><span class="idx">10</span></div>
+      <h2>قواعد البيانات على السحابة (Cloud Databases)</h2>
+      <p class="lead"><b>DBaaS</b> (Database as a Service) بتديك وصول لموارد قاعدة بيانات كاملة على السحابة من غير ما تركّب أي هاردوير أو تنصّب أي سوفتوير بنفسك.</p>
+      <table class="mini">
+        <tr><th>المحور</th><th>يعني إيه</th></tr>
+        <tr><td>Ease of Use and Access</td><td>وصول عن طريق API، واجهة ويب، أو تطبيقات سحابية/عن بُعد</td></tr>
+        <tr><td>Scalability &amp; Economics</td><td>تكبير أو تصغير التخزين والمعالجة وقت ما تحتاج، وتدفع على حسب استخدامك بس (Pay per use)</td></tr>
+        <tr><td>Disaster Recovery</td><td>نسخ احتياطية سحابية وتوزيع جغرافي يحمي بياناتك من فقدها</td></tr>
+      </table>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="out-card"><div class="bar">▸ أمثلة قواعد بيانات سحابية</div><pre>IBM Db2
+Databases for PostgreSQL
+Oracle Database Cloud Service
+Microsoft Azure SQL Database
+Amazon Relational Database Services (RDS)</pre></div>
+        <div class="out-card"><div class="bar">▸ بتتوفر إزاي؟</div><pre>VMs (Virtual Machines)
+       أو
+Managed Service (مُدارة بالكامل)
+
+Single-tenant (لعميل واحد)
+       أو
+Multi-tenant (مشتركة بين عملاء)</pre></div>
+      </div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('cloud', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 11 DEPLOY -->
+    <section class="topic" id="deploy">
+      <div class="kicker"><span class="idx">11</span></div>
+      <h2>نشر Instance من IBM Db2 على السحابة</h2>
+      <p class="lead">خطوات عملية بسيطة تاخد دقايق، وتخرج بقاعدة بيانات شغّالة على الإنترنت.</p>
+      <table class="mini">
+        <tr><th>#</th><th>الخطوة</th></tr>
+        <tr><td>1</td><td>ادخل IBM Cloud Catalog، دور على Db2، واختار الخدمة (متلخبطش بينها وبين Db2 Hosted أو Db2 Warehouse — دول مختلفين)</td></tr>
+        <tr><td>2</td><td>اختار المنطقة (Region) — زي Dallas</td></tr>
+        <tr><td>3</td><td>اختار خطة <b>Lite</b> (مجانية): 200 MB تخزين، 5 اتصالات في نفس الوقت، نظام Multi-tenant مشترك</td></tr>
+        <tr><td>4</td><td>اضغط Create — الخدمة هتظهر في الـ Dashboard بتاعك تحت Services</td></tr>
+        <tr><td>5</td><td>من Manage، اضغط Open Console للدخول على قاعدة البيانات مباشرة</td></tr>
+        <tr><td>6</td><td>من Service Credentials، اعمل New Credential — هتاخد JSON فيه كل بيانات الاتصال</td></tr>
+      </table>
+      <div class="out-card" style="margin-top:16px;"><div class="bar">▸ Service Credentials — البيانات اللي هتحتاجها</div><pre>Database:  BLUDB
+Hostname:  dashdb-txn-sbox-yp-dal09-04.services.dal.bluemix.net
+Port:      50000
+Username:  lct12330
+Password:  ********  (سري، متتشاركش)</pre></div>
+      <div class="note"><b>خطر شائع:</b> خطة Lite مجانية، لكن بتتحذف تلقائيًا لو فضلت 30 يوم من غير استخدام. لو مش هتستخدم القاعدة لفترة، سجّل دخول بين الحين والتاني عشان تفضل شغالة.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('deploy', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- 12 RETRIEVE -->
+    <section class="topic" id="retrieve">
+      <div class="kicker"><span class="idx">12</span></div>
+      <h2>استرجاع صفوف من جدول حقيقي على Db2</h2>
+      <p class="lead">أمثلة حقيقية من جداول <code>Book</code> و<code>Author</code> على قاعدة بيانات Db2 الفعلية بتاعت الجلسة.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>select_book.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>db2 =&gt; <span class="k">select</span> book_id, title <span class="k">from</span> Book
+<span class="k">where</span> book_id = <span class="s">'B1'</span>;</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>Book_ID  Title
+-------  --------------------------
+B1       Getting started with DB2
+         Express-C
+
+1 record(s) selected.</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>like_pattern.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>db2 =&gt; <span class="k">select</span> firstname <span class="k">from</span> Author
+<span class="k">where</span> firstname <span class="k">like</span> <span class="s">'R%'</span>;</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>Firstname
+---------
+Raul
+Rav
+
+2 record(s) selected.</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>range_query.sql</span><button class="copy-btn" onclick="copyCode(this)">نسخ</button></div>
+          <pre>db2 =&gt; <span class="k">select</span> title, pages <span class="k">from</span> Book
+<span class="k">where</span> pages &gt;= <span class="s">290</span> <span class="k">and</span> pages &lt;= <span class="s">300</span>;</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>Title                        Pages
+---------------------------  -----
+Database Fundamentals        300
+Getting started with DB2     298
+App Dev
+
+2 record(s) selected.</pre></div>
+      </div>
+      <div class="note"><b>ملاحظة:</b> <code>WHERE country IN ('AU','BR')</code> بترجع نفس نتيجة <code>WHERE country='AU' OR country='BR'</code> بالظبط — زي ما اتعلمنا في جلسة الـ Comparison Conditions، بس <code>IN</code> أقصر وأوضح لما عدد القيم يكبر.</div>
+      <div class="mark-row"><button class="mark-btn" onclick="toggleDone('retrieve', this)">✓ علّمت الموضوع ده كمذاكَر</button></div>
+    </section>
+
+    <!-- QUIZ -->
+    <section id="quiz">
+      <div class="kicker"><span class="idx">🧠</span></div>
+      <h2>اختبر نفسك</h2>
+      <p class="lead">10 أسئلة على كل الجلسة — اختار إجابة وهيبان لك صح ولا غلط مع شرح سريع.</p>
+
+      <div class="quiz-summary">
+        <div>النتيجة</div>
+        <div class="score"><span id="scoreVal">0</span> / <span id="scoreTotal">10</span></div>
+        <button class="reset-btn" onclick="resetQuiz()">إعادة المحاولة</button>
+      </div>
+
+      <div id="quizList"></div>
+    </section>
+
+    <footer>SQL Views &amp; Cloud Databases Session — مرجع مذاكرة للطلاب<span class="sup">Course by Eng. Ahmed Salem · Guide by Mohamed Mahmoud Salama</span></footer>
+  </main>
+</div>
+
+<button id="toTop" onclick="window.scrollTo({top:0,behavior:'smooth'})" title="ارجع لفوق">↑</button>
+
+<script>
+// cursor spotlight glow (desktop only — feels odd on touch)
+(function(){
+  const spot = document.getElementById('spotlight');
+  if(window.matchMedia('(pointer:fine)').matches){
+    window.addEventListener('mousemove', (e)=>{
+      spot.style.setProperty('--mx', e.clientX + 'px');
+      spot.style.setProperty('--my', e.clientY + 'px');
+      spot.classList.add('on');
+    });
+    window.addEventListener('mouseleave', ()=> spot.classList.remove('on'));
+  }
+})();
+
+// twinkling stars — generated once, positions randomized
+(function(){
+  const layer = document.getElementById('starsLayer');
+  const count = window.innerWidth < 700 ? 18 : 36;
+  for(let i=0;i<count;i++){
+    const s = document.createElement('div');
+    s.className = 'star';
+    s.style.left = Math.random()*100 + '%';
+    s.style.top = Math.random()*55 + '%';
+    s.style.animationDelay = (-Math.random()*3.6) + 's';
+    s.style.animationDuration = (2.6 + Math.random()*2.4) + 's';
+    layer.appendChild(s);
+  }
+})();
+
+// subtle 3D tilt on code/output cards (desktop only)
+(function(){
+  if(!window.matchMedia('(pointer:fine)').matches) return;
+  document.querySelectorAll('.code-card, .out-card').forEach(card=>{
+    card.addEventListener('mousemove', (e)=>{
+      const r = card.getBoundingClientRect();
+      const px = (e.clientX - r.left) / r.width - 0.5;
+      const py = (e.clientY - r.top) / r.height - 0.5;
+      card.style.transform = `perspective(700px) rotateX(${(-py*4).toFixed(2)}deg) rotateY(${(px*4).toFixed(2)}deg) translateZ(2px)`;
+    });
+    card.addEventListener('mouseleave', ()=>{
+      card.style.transform = 'perspective(700px) rotateX(0) rotateY(0)';
+    });
+  });
+})();
+
+document.querySelectorAll('.navlink[data-target]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const target = document.getElementById(btn.dataset.target);
+    if(target) target.scrollIntoView({behavior:'smooth', block:'start'});
+  });
+});
+
+const links = document.querySelectorAll('#topnav .navlink[data-target]');
+const sections = [...document.querySelectorAll('section.topic, #quiz')];
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('revealed');
+      links.forEach(l=>l.classList.remove('active'));
+      const match = document.querySelector(`#topnav .navlink[data-target="${e.target.id}"]`);
+      if(match) match.classList.add('active');
+    }
+  });
+},{rootMargin:'-20% 0px -65% 0px'});
+sections.forEach(s=>io.observe(s));
+
+const TOPIC_IDS = ['intro','advantages','simple-complex','create','dml','checkoption','modify-drop','complexview','queryview','cloud','deploy','retrieve'];
+window.addEventListener('scroll', ()=>{
+  const h = document.documentElement;
+  const pct = (h.scrollTop) / (h.scrollHeight - h.clientHeight) * 100;
+  document.getElementById('pageProgress').style.width = pct + '%';
+  document.getElementById('toTop').classList.toggle('show', h.scrollTop > 600);
+});
+
+function copyCode(btn){
+  const pre = btn.closest('.code-card').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(()=>{
+    const old = btn.textContent;
+    btn.textContent = 'اتنسخ ✓';
+    btn.classList.add('copied');
+    setTimeout(()=>{ btn.textContent = old; btn.classList.remove('copied'); }, 1400);
+  }).catch(()=>{
+    btn.textContent = 'مش هيتنسخ 😕';
+    setTimeout(()=>{ btn.textContent = 'نسخ'; }, 1400);
+  });
+}
+
+const doneSet = new Set();
+function updateProgressUI(){
+  const pct = Math.round((doneSet.size / TOPIC_IDS.length) * 100);
+  document.getElementById('sideProgressFill').style.width = pct + '%';
+  document.getElementById('sideProgressText').textContent = pct + '%';
+  document.getElementById('heroProgressFill').style.width = pct + '%';
+  document.getElementById('heroProgressText').textContent = `${doneSet.size} / ${TOPIC_IDS.length} مواضيع خلّصتها`;
+  const ring = document.getElementById('ringFg');
+  if(ring){
+    const circumference = 238.76;
+    ring.style.strokeDashoffset = circumference - (circumference * pct / 100);
+  }
+  TOPIC_IDS.forEach(id=>{
+    const navLink = document.querySelector(`#topnav .navlink[data-target="${id}"]`);
+    if(navLink) navLink.classList.toggle('done', doneSet.has(id));
+  });
+}
+function toggleDone(id, btn){
+  if(doneSet.has(id)){
+    doneSet.delete(id);
+    btn.classList.remove('done');
+    btn.textContent = '✓ علّمت الموضوع ده كمذاكَر';
+  } else {
+    doneSet.add(id);
+    btn.classList.add('done');
+    btn.textContent = '✓ مذاكَر — كليك تاني للإلغاء';
+  }
+  updateProgressUI();
+}
+updateProgressUI();
+
+const QUESTIONS = [
+  {q:"الـ View بيخزّن بيانات خاصة بيه؟", opts:["آه، نسخة كاملة من البيانات", "لأ، هو بس جملة SELECT مخزّنة، والبيانات فعليًا في الجدول الأساسي", "بيخزن نص البيانات بس", "بيخزن البيانات لمدة 24 ساعة بس"], a:1, ex:"الـ View 'شباك' على البيانات — مفيهوش نسخة خاصة، هو بس جملة SELECT متخزنة في الـ data dictionary."},
+  {q:"إيه الفرق الأساسي بين Simple View و Complex View؟", opts:["Simple View بس اللي ينفع تستعلم عليه", "Simple View جدول واحد من غير دوال أو تجميع، Complex View ممكن أكتر من جدول وفيه دوال/تجميع", "Complex View بترجع بيانات أسرع", "مفيش فرق حقيقي بينهم"], a:1, ex:"Simple View = جدول واحد بلا دوال أو GROUP BY. Complex View ممكن يجمع أكتر من جدول ويستخدم دوال تجميعية، وده بيأثر على إمكانية عمل DML من خلاله."},
+  {q:"لو عملت CREATE VIEW Employee_D1 AS SELECT * FROM employee WHERE dno=1 WITH CHECK OPTION، وحاولت تعمل INSERT بصف dno=4، هيحصل إيه؟", opts:["هينجح عادي", "هيترفض بـ error لأنه بيخالف شرط الـ View", "هيتضاف بس مش هيظهر تاني", "هيتحول تلقائيًا لـ dno=1"], a:1, ex:"WITH CHECK OPTION بترفض أي INSERT أو UPDATE هيخرج بره حدود شرط WHERE بتاع الـ View — عشان كده الـ INSERT بـ dno=4 هيترفض."},
+  {q:"من غير WITH CHECK OPTION، لو ضفت صف من خلال View شرطه dno=1 لكن الصف نفسه dno=4، إيه اللي بيحصل؟", opts:["برضو هيترفض", "الصف بينضاف فعليًا للجدول الأساسي، بس مش هيظهر لو استعلمت على الـ View تاني", "هيدي error من نوع تاني", "الجدول الأساسي هيترفض الصف تلقائيًا"], a:1, ex:"من غير CHECK OPTION، INSERT العادي بينفذ عادي على الجدول الأساسي — بس بما إن الصف مش بيحقق شرط الـ View (dno=1)، مش هيظهر لو استعلمت على الـ View نفسه تاني."},
+  {q:"DROP VIEW Employee_D5؛ بتمسح إيه بالظبط؟", opts:["كل بيانات جدول employee", "تعريف الـ View بس (جملة SELECT المخزّنة)، والبيانات الأصلية تفضل موجودة", "الجدول الأساسي كله", "كل الـ Views الموجودة في القاعدة"], a:1, ex:"لأن الـ View مالوش بيانات خاصة بيه، DROP VIEW بيمسح تعريفه بس — جدول employee الحقيقي مش بيتأثر خالص."},
+  {q:"في الـ View reports، كل subquery بيستخدم d.dnumber من الاستعلام الخارجي — الاسم التقني لده إيه؟", opts:["Nested Loop", "Correlated Subquery", "Cross Join", "Self Join"], a:1, ex:"Correlated Subquery هو استعلام داخلي مرتبط بصف معيّن من الاستعلام الخارجي، وبيتنفّذ من جديد لكل صف — عكس subquery عادي بيتنفّذ مرة واحدة بس."},
+  {q:"ليه View زي reports (فيه COUNT وSUM وJOIN) بيتصنّف كـ Complex View؟", opts:["لأنه بطيء", "لأنه فيه أكتر من جدول ودوال تجميعية، فناتجه مش نسخة مباشرة من صف واحد حقيقي", "لأن اسمه طويل", "لأنه مبني على View تاني بس"], a:1, ex:"وجود أكتر من جدول ودوال تجميعية زي COUNT/SUM/AVG هو اللي بيخلي الـ View معقّد — وده بيمنع عمل DML مباشر عليه."},
+  {q:"من مميزات DBaaS (Database as a Service)؟", opts:["لازم تشتري سيرفر فعلي وتركّبه بنفسك", "وصول لموارد قاعدة بيانات على السحابة من غير هاردوير أو تنصيب سوفتوير", "متاحة بس لشركة واحدة في العالم", "مالهاش أي تكلفة أبدًا مهما استخدمتها"], a:1, ex:"DBaaS بتوفّرلك قاعدة بيانات كاملة جاهزة على السحابة، تدفع فيها على حسب استخدامك (Pay per use) من غير أي إعداد هاردوير."},
+  {q:"خطة Lite المجانية في IBM Db2 on Cloud بتتحذف تلقائيًا لو؟", opts:["استخدمتها كتير", "فضلت من غير استخدام 30 يوم", "غيّرت الباسورد", "قفلت المتصفح"], a:1, ex:"خطط Lite بتتحذف تلقائيًا بعد 30 يوم من عدم الاستخدام — لازم تسجّل دخول بين الحين والتاني عشان تفضل شغالة."},
+  {q:"SELECT firstname FROM Author WHERE firstname LIKE 'R%'; هترجع أسامي زي إيه؟", opts:["أي اسم فيه حرف R في أي مكان", "أسامي بادئة بحرف R", "أسامي منتهية بحرف R", "اسم واحد بس هو Raul"], a:1, ex:"% بعد R معناها أي عدد من الحروف بعد R — يعني بترجع كل الأسامي اللي تبدأ بحرف R زي Raul و Rav."}
+];
+
+const list = document.getElementById('quizList');
+let answered = new Array(QUESTIONS.length).fill(false);
+let score = 0;
+
+function render(){
+  list.innerHTML = '';
+  QUESTIONS.forEach((item, qi)=>{
+    const card = document.createElement('div');
+    card.className = 'qcard';
+    card.innerHTML = `
+      <div class="qtext">${qi+1}. ${item.q}</div>
+      <div class="opts">
+        ${item.opts.map((o,oi)=>`<button class="opt" data-q="${qi}" data-o="${oi}">${o}</button>`).join('')}
+      </div>
+      <div class="explain" id="ex-${qi}">💡 ${item.ex}</div>
+    `;
+    list.appendChild(card);
+  });
+  document.querySelectorAll('.opt').forEach(btn=>{
+    btn.addEventListener('click', onAnswer);
+  });
+  document.getElementById('scoreTotal').textContent = QUESTIONS.length;
+}
+
+function onAnswer(e){
+  const qi = +e.target.dataset.q;
+  const oi = +e.target.dataset.o;
+  if(answered[qi]) return;
+  answered[qi] = true;
+  const item = QUESTIONS[qi];
+  const opts = document.querySelectorAll(`.opt[data-q="${qi}"]`);
+  opts.forEach(b=>b.disabled = true);
+  if(oi === item.a){
+    e.target.classList.add('correct');
+    score++;
+  } else {
+    e.target.classList.add('wrong');
+    opts[item.a].classList.add('correct');
+  }
+  document.getElementById(`ex-${qi}`).style.display = 'block';
+  document.getElementById('scoreVal').textContent = score;
+}
+
+function resetQuiz(){
+  answered = new Array(QUESTIONS.length).fill(false);
+  score = 0;
+  document.getElementById('scoreVal').textContent = 0;
+  render();
+}
+
+render();
+</script>
+</body>
+</html>

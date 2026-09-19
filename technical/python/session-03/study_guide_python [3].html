@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Session 3 · بايثون · الحلقات والاستثناءات</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg: #0f1210;
+    --bg-soft: #161b18;
+    --panel: #1b211d;
+    --line: #2a322c;
+    --ink: #eef1ec;
+    --ink-dim: #9fada3;
+    --mint: #8fd6a8;
+    --mint-dim: #5c9a72;
+    --amber: #e8b567;
+    --coral: #e2795f;
+    --code-bg: #12100d;
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(1100px 500px at 85% -10%, rgba(143,214,168,.08), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:'Cairo',sans-serif;
+    line-height:1.7;
+  }
+  code, .mono{font-family:'JetBrains Mono',monospace;}
+
+  /* ===== layout shell ===== */
+  .shell{display:grid; grid-template-columns: 260px 1fr; min-height:100vh;}
+  @media (max-width: 880px){ .shell{grid-template-columns: 1fr;} .side{position:static; height:auto;} }
+
+  .side{
+    position:sticky; top:0; height:100vh; overflow-y:auto;
+    background:var(--bg-soft); border-left:1px solid var(--line);
+    padding:26px 18px;
+  }
+  .brand{display:flex; align-items:center; gap:10px; margin-bottom:22px; padding:0 6px;}
+  .brand .dot{width:12px;height:12px;border-radius:3px;background:var(--mint); box-shadow:0 0 14px rgba(143,214,168,.7);}
+  .brand b{font-size:15px; letter-spacing:.3px;}
+  .brand span{display:block; font-size:11px; color:var(--ink-dim);}
+
+  nav a{
+    display:flex; align-items:center; gap:10px;
+    padding:9px 10px; border-radius:9px; color:var(--ink-dim);
+    text-decoration:none; font-size:14px; margin-bottom:2px;
+    border:1px solid transparent; transition:.15s;
+  }
+  nav a .n{
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--mint-dim);
+    width:22px; text-align:center;
+  }
+  nav a:hover{background:var(--panel); color:var(--ink);}
+  nav a.active{background:rgba(143,214,168,.1); border-color:rgba(143,214,168,.35); color:var(--mint);}
+  nav a.active .n{color:var(--mint);}
+  .nav-quiz{margin-top:16px; padding-top:16px; border-top:1px dashed var(--line);}
+
+  /* ===== main ===== */
+  main{padding:44px clamp(20px,4vw,64px) 90px;}
+  .hero{
+    background:linear-gradient(160deg, var(--panel), var(--bg-soft));
+    border:1px solid var(--line); border-radius:20px;
+    padding:34px clamp(20px,4vw,44px); margin-bottom:40px; position:relative; overflow:hidden;
+  }
+  .hero::after{
+    content:"for i in range(∞):"; position:absolute; left:-10px; bottom:-14px;
+    font-family:'JetBrains Mono',monospace; font-size:54px; color:rgba(143,214,168,.06);
+    letter-spacing:1px; pointer-events:none;
+  }
+  .eyebrow{font-family:'JetBrains Mono',monospace; color:var(--mint); font-size:12.5px; letter-spacing:1px;}
+  .hero h1{font-size:clamp(26px,4vw,38px); margin:10px 0 8px; font-weight:900;}
+  .hero p{color:var(--ink-dim); max-width:620px; margin:0; font-size:15px;}
+  .hero-tags{display:flex; flex-wrap:wrap; gap:8px; margin-top:20px;}
+  .tag{
+    font-family:'JetBrains Mono',monospace; font-size:11.5px; color:var(--ink-dim);
+    border:1px solid var(--line); padding:5px 10px; border-radius:20px; background:var(--code-bg);
+  }
+
+  section.topic{
+    border-top:1px solid var(--line); padding-top:34px; margin-top:34px; scroll-margin-top:24px;
+  }
+  section.topic .kicker{
+    display:flex; align-items:center; gap:12px; margin-bottom:6px;
+  }
+  section.topic .kicker .idx{
+    font-family:'JetBrains Mono',monospace; color:var(--mint); font-size:13px;
+    border:1px solid var(--mint-dim); border-radius:8px; padding:2px 9px;
+  }
+  section.topic h2{font-size:24px; margin:6px 0 12px; font-weight:800;}
+  section.topic .lead{color:var(--ink-dim); max-width:760px; margin-bottom:18px; font-size:15px;}
+
+  .grid2{display:grid; grid-template-columns: 1.1fr .9fr; gap:18px; align-items:start;}
+  @media (max-width:760px){.grid2{grid-template-columns:1fr;}}
+
+  .code-card{
+    background:var(--code-bg); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden;
+  }
+  .code-card .bar{
+    display:flex; align-items:center; gap:7px; padding:9px 13px; border-bottom:1px solid var(--line);
+    background:#151310;
+  }
+  .code-card .bar i{width:9px;height:9px;border-radius:50%;background:#3a3d38;}
+  .code-card .bar span{margin-right:auto; font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-dim);}
+  .code-card pre{
+    margin:0; padding:16px; direction:ltr; text-align:left; overflow-x:auto;
+    font-family:'JetBrains Mono',monospace; font-size:13.2px; color:#dce7de; line-height:1.65;
+  }
+  .code-card pre .c{color:#6f8a76;} /* comment */
+  .code-card pre .k{color:#e2795f;} /* keyword */
+  .code-card pre .s{color:#e8b567;} /* string/num */
+  .code-card pre .f{color:#8fd6a8;} /* func/builtin */
+
+  .out-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;
+  }
+  .out-card .bar{padding:9px 13px; border-bottom:1px solid var(--line); font-size:11.5px; color:var(--mint); font-family:'JetBrains Mono',monospace;}
+  .out-card pre{margin:0; padding:16px; direction:ltr; text-align:left; font-family:'JetBrains Mono',monospace; font-size:13px; color:#c7d2c9; white-space:pre-wrap;}
+
+  .note{
+    margin-top:14px; padding:12px 16px; border-radius:10px;
+    background:rgba(232,181,103,.08); border:1px solid rgba(232,181,103,.3);
+    font-size:13.5px; color:#f0d5a4;
+  }
+  .note b{color:var(--amber);}
+  .try{
+    margin-top:14px; padding:14px 16px; border-radius:10px;
+    background:rgba(143,214,168,.07); border:1px dashed rgba(143,214,168,.4);
+    font-size:14px;
+  }
+  .try b{color:var(--mint);}
+
+  /* ===== quiz ===== */
+  #quiz{border-top:1px solid var(--line); padding-top:34px; margin-top:50px;}
+  .qcard{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px 22px; margin-bottom:16px;
+  }
+  .qcard .qtext{font-weight:700; margin-bottom:14px; font-size:15.5px;}
+  .qcard .opts{display:grid; gap:9px;}
+  .opt{
+    display:block; width:100%; text-align:right; cursor:pointer;
+    background:var(--code-bg); border:1px solid var(--line); color:var(--ink);
+    padding:11px 14px; border-radius:9px; font-family:'Cairo',sans-serif; font-size:14px;
+    transition:.15s;
+  }
+  .opt:hover{border-color:var(--mint-dim);}
+  .opt.correct{border-color:var(--mint); background:rgba(143,214,168,.12); color:var(--mint);}
+  .opt.wrong{border-color:var(--coral); background:rgba(226,121,95,.12); color:var(--coral);}
+  .opt[disabled]{cursor:default;}
+  .explain{display:none; margin-top:12px; font-size:13.5px; color:var(--ink-dim); border-top:1px dashed var(--line); padding-top:10px;}
+
+  .quiz-summary{
+    background:linear-gradient(160deg, var(--panel), var(--bg-soft));
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px; text-align:center; margin-bottom:20px;
+  }
+  .quiz-summary .score{font-family:'JetBrains Mono',monospace; font-size:34px; color:var(--mint); font-weight:700;}
+  .reset-btn{
+    margin-top:10px; background:var(--mint); color:#0f1210; border:none; font-weight:700;
+    padding:9px 20px; border-radius:9px; cursor:pointer; font-family:'Cairo',sans-serif; font-size:14px;
+  }
+
+  footer{text-align:center; color:var(--ink-dim); font-size:12.5px; padding:30px 0 10px;}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <aside class="side">
+    <div class="brand"><div class="dot"></div><div><b>Session 3</b><span>بايثون · حلقات واستثناءات</span></div></div>
+    <nav id="topnav">
+      <a href="#for-loop" class="n1"><span class="n">01</span> For Loop</a>
+      <a href="#range" class="n2"><span class="n">02</span> Range()</a>
+      <a href="#comprehension" class="n3"><span class="n">03</span> List Comprehension</a>
+      <a href="#nested" class="n4"><span class="n">04</span> حلقات متداخلة</a>
+      <a href="#break-continue-pass" class="n5"><span class="n">05</span> Break · Continue · Pass</a>
+      <a href="#enumerate" class="n6"><span class="n">06</span> Enumerate</a>
+      <a href="#dict" class="n7"><span class="n">07</span> Dictionaries</a>
+      <a href="#while" class="n8"><span class="n">08</span> While Loop</a>
+      <a href="#try-except" class="n9"><span class="n">09</span> Try / Except</a>
+      <div class="nav-quiz">
+        <a href="#quiz">🧠 اختبر نفسك (كويز)</a>
+      </div>
+    </nav>
+  </aside>
+
+  <main>
+    <div class="hero">
+      <div class="eyebrow">SESSION 3 · PYTHON</div>
+      <h1>الحلقات التكرارية والتعامل مع الأخطاء</h1>
+      <p>مرجع مذاكرة تفاعلي مبني على أمثلة الجلسة نفسها — كل نقطة فيها شرح مبسط، الكود زي ما اتكتب في المحاضرة، والناتج المتوقع جنبه.</p>
+      <div class="hero-tags">
+        <span class="tag">for / while</span><span class="tag">range()</span><span class="tag">list comprehension</span>
+        <span class="tag">break / continue / pass</span><span class="tag">enumerate</span><span class="tag">dict</span><span class="tag">try / except</span>
+      </div>
+    </div>
+
+    <!-- 01 FOR LOOP -->
+    <section class="topic" id="for-loop">
+      <div class="kicker"><span class="idx">01</span></div>
+      <h2>For Loop — حلقة التكرار الأساسية</h2>
+      <p class="lead">الـ <code>for</code> بتمشي على عناصر أي "iterable" (لستة، سترينج، ...) عنصر عنصر، وتنفّذ نفس الكود لكل عنصر.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>for_basic.py</span></div>
+          <pre><span class="k">lst</span> = [2,3,4,5,6,7,7]
+<span class="k">for</span> i <span class="k">in</span> lst:
+    <span class="f">print</span>(i)</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>2
+3
+4
+5
+6
+7
+7</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>even_odd.py</span></div>
+          <pre><span class="k">lst</span> = [2,3,4,5,6,7,7]
+even = []
+odd = []
+<span class="k">for</span> i <span class="k">in</span> lst:
+    <span class="k">if</span> i % 2 == 0:
+        even.append(i)
+    <span class="k">else</span>:
+        odd.append(i)
+<span class="f">print</span>(even)
+<span class="f">print</span>(odd)</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>[2, 4, 6]
+[3, 5, 7, 7]</pre></div>
+      </div>
+      <div class="try"><b>جرب بنفسك:</b> اطبع جدول الضرب في 2 من 1 لـ 12 باستخدام <code>for i in lst</code> — زي ما اتعمل في المحاضرة: <code>f"{i} X 2 = {i*2}"</code>.</div>
+    </section>
+
+    <!-- 02 RANGE -->
+    <section class="topic" id="range">
+      <div class="kicker"><span class="idx">02</span></div>
+      <h2>Range()</h2>
+      <p class="lead"><code>range(start=0, stop, step=1)</code> بتولّد أرقام متتابعة من غير ما تحتاج تكتب لستة يدويًا.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>range_example.py</span></div>
+          <pre><span class="c"># range(start=0 , stop or end , step=1)</span>
+<span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(1,13):
+    <span class="f">print</span>(f<span class="s">"{i} X 2 = {i*2}"</span>)</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>1 X 2 = 2
+2 X 2 = 4
+3 X 2 = 6
+...
+12 X 2 = 24</pre></div>
+      </div>
+      <div class="note"><b>ملاحظة:</b> <code>range(1,13)</code> بيوقف قبل 13 — يعني آخر رقم فعلي هو 12.</div>
+    </section>
+
+    <!-- 03 COMPREHENSION -->
+    <section class="topic" id="comprehension">
+      <div class="kicker"><span class="idx">03</span></div>
+      <h2>For في سطر واحد — List Comprehension</h2>
+      <p class="lead">أي حلقة <code>for</code> بسيطة بتبني لستة جديدة، ممكن تتكتب في سطر واحد بالشكل: <code>[expression for item in list]</code>.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>long_way.py</span></div>
+          <pre>lst2 = []
+lst = [4,5,6,7,8]
+<span class="k">for</span> i <span class="k">in</span> lst:
+    lst2.append(i*2)</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>one_line.py</span></div>
+          <pre>lst = [4,5,6,7,8]
+[i * 2 <span class="k">for</span> i <span class="k">in</span> lst]
+<span class="c"># [8, 10, 12, 14, 16]</span></pre>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>with_condition.py</span></div>
+          <pre>lst = [4,5,6,7,8]
+even = [i <span class="k">for</span> i <span class="k">in</span> lst <span class="k">if</span> i % 2 == 0]
+<span class="c"># [4, 6, 8]</span>
+
+odd = [i <span class="k">for</span> i <span class="k">in</span> lst <span class="k">if</span> i % 2 != 0]
+<span class="c"># [5, 7]</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>clean_text.py</span></div>
+          <pre>text = <span class="s">"qwertyuio#$pasdfg..."</span>
+schar = <span class="s">"!@#$%^&*()?+_"</span>
+<span class="f">''</span>.join([i <span class="k">for</span> i <span class="k">in</span> text <span class="k">if</span> i <span class="k">not in</span> schar])
+<span class="c"># 'qwertyuiopasdfghjklzxcvbnm'</span></pre>
+        </div>
+      </div>
+      <div class="try"><b>جرب بنفسك:</b> اجمع عناصر لستة باستخدام <code>for</code> عادي: <code>s = s + i</code> — جرب بعدها تعمل نفس الفكرة بس بـ <code>sum(lst)</code>.</div>
+    </section>
+
+    <!-- 04 NESTED -->
+    <section class="topic" id="nested">
+      <div class="kicker"><span class="idx">04</span></div>
+      <h2>الحلقات المتداخلة (Nested For)</h2>
+      <p class="lead">حلقة جوه حلقة — مفيدة جدًا مع اللستة اللي جواها لستات (زي المصفوفات/matrices).</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>nested_basic.py</span></div>
+          <pre>lst = [[2,3,4], [3,4,5]]
+<span class="k">for</span> i <span class="k">in</span> lst:
+    <span class="f">print</span>(i)
+    <span class="k">for</span> j <span class="k">in</span> i:
+        <span class="f">print</span>(j)
+    <span class="f">print</span>(<span class="s">"########"</span>)</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>[2, 3, 4]
+2
+3
+4
+########
+[3, 4, 5]
+3
+4
+5
+########</pre></div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>matrix_add.py</span></div>
+          <pre>m = [[1,2,3],[2,3,4],[4,5,6],[6,7,8]]
+w = [[1,2,2],[6,3,4],[4,2,6],[6,9,8]]
+S = []
+<span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(<span class="f">len</span>(m)):
+    s = []
+    <span class="k">for</span> j <span class="k">in</span> <span class="f">range</span>(<span class="f">len</span>(m[0])):
+        s.append(m[i][j] + w[i][j])
+    S.append(s)</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>with_numpy.py</span></div>
+          <pre><span class="k">import</span> numpy <span class="k">as</span> np
+m = np.array([[1,2,3],[2,3,4],[4,5,6],[6,7,8]])
+w = np.array([[1,2,2],[6,3,4],[4,2,6],[6,9,8]])
+m + w   <span class="c"># نفس النتيجة بسطر واحد!</span></pre>
+        </div>
+      </div>
+      <div class="note"><b>ليه numpy؟</b> نفس عملية جمع المصفوفتين اللي محتاجة حلقتين متداخلتين، numpy بتعملها بسطر واحد وأسرع بكتير.</div>
+    </section>
+
+    <!-- 05 BREAK/CONTINUE/PASS -->
+    <section class="topic" id="break-continue-pass">
+      <div class="kicker"><span class="idx">05</span></div>
+      <h2>Break · Continue · Pass</h2>
+      <p class="lead">تلات كلمات بتتحكم في مسار الحلقة: <b>break</b> يوقفها خالص، <b>continue</b> يقفز للعنصر اللي بعده، <b>pass</b> "متعمليش حاجة" (placeholder).</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>break.py</span></div>
+          <pre>lst = [2,3,4,5,6,7]
+<span class="k">for</span> i <span class="k">in</span> lst:
+    <span class="k">if</span> i == 5:
+        <span class="k">break</span>
+    <span class="f">print</span>(i)
+<span class="c"># 2 3 4  (بيوقف تمامًا)</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>continue.py</span></div>
+          <pre>lst = [2,3,4,5,6,7]
+<span class="k">for</span> i <span class="k">in</span> lst:
+    <span class="k">if</span> i == 5:
+        <span class="k">continue</span>
+    <span class="f">print</span>(i)
+<span class="c"># 2 3 4 6 7  (بيتخطى الـ5 بس)</span></pre>
+        </div>
+      </div>
+      <div class="code-card" style="margin-top:16px;">
+        <div class="bar"><i></i><i></i><i></i><span>pass.py</span></div>
+        <pre><span class="k">for</span> i <span class="k">in</span> <span class="f">range</span>(10):
+    <span class="k">pass</span>       <span class="c"># كود مؤقت لسه هنكتبه</span>
+
+<span class="k">def</span> say_hello():
+    <span class="k">pass</span>       <span class="c"># فانكشن لسه فاضية</span>
+
+<span class="k">class</span> A:
+    <span class="k">pass</span>       <span class="c"># كلاس لسه فاضي</span></pre>
+      </div>
+    </section>
+
+    <!-- 06 ENUMERATE -->
+    <section class="topic" id="enumerate">
+      <div class="kicker"><span class="idx">06</span></div>
+      <h2>Enumerate</h2>
+      <p class="lead"><code>enumerate(lst)</code> بترجع كل عنصر مع رقم مكانه (index) مع بعض، في هيئة زوج <code>(index, value)</code>.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>enumerate.py</span></div>
+          <pre>lst = [2,3,4,5,6,7]
+<span class="k">for</span> i, v <span class="k">in</span> <span class="f">enumerate</span>(lst):
+    <span class="f">print</span>(f<span class="s">'Index of {v} is {i}'</span>)</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>Index of 2 is 0
+Index of 3 is 1
+Index of 4 is 2
+Index of 5 is 3
+Index of 6 is 4
+Index of 7 is 5</pre></div>
+      </div>
+      <div class="try"><b>ربط بالقواميس:</b> <code>dict([i for i in enumerate(lst)])</code> بتحول اللستة لقاموس {index: value} — جرّبها في الجزء الجاي.</div>
+    </section>
+
+    <!-- 07 DICT -->
+    <section class="topic" id="dict">
+      <div class="kicker"><span class="idx">07</span></div>
+      <h2>Dictionaries — القواميس</h2>
+      <p class="lead">القاموس بيخزن بيانات على شكل <code>key: value</code>. عنده تلات دوال أساسية للتعامل مع محتواه.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>build_dict.py</span></div>
+          <pre>lst = [2,3,4,5,6,7]
+d = <span class="f">dict</span>([i <span class="k">for</span> i <span class="k">in</span> <span class="f">enumerate</span>(lst)])
+<span class="c"># {0: 2, 1: 3, 2: 4, 3: 5, 4: 6, 5: 7}</span></pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ الدوال التلاتة</div><pre>d.keys()   → dict_keys([0,1,2,3,4,5])
+d.values() → dict_values([2,3,4,5,6,7])
+d.items()  → dict_items([(0,2),(1,3),...])</pre></div>
+      </div>
+    </section>
+
+    <!-- 08 WHILE -->
+    <section class="topic" id="while">
+      <div class="kicker"><span class="idx">08</span></div>
+      <h2>While Loop</h2>
+      <p class="lead">الـ <code>while</code> بيفضل يكرر طول ما الشرط <b>True</b>. لازم يكون في حاجة جوه الحلقة بتغيّر الشرط، وإلا الحلقة تبقى "لا نهائية" (infinite loop).</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>while_basic.py</span></div>
+          <pre>x = 1
+<span class="k">while</span> x <= 10:
+    <span class="f">print</span>(x)
+    x += 1</pre>
+        </div>
+        <div class="out-card"><div class="bar">▸ Output</div><pre>1
+2
+3
+...
+10</pre></div>
+      </div>
+      <div class="code-card" style="margin-top:16px;">
+        <div class="bar"><i></i><i></i><i></i><span>while_true_break.py</span></div>
+        <pre><span class="k">while</span> <span class="k">True</span>:
+    x = <span class="f">input</span>(<span class="s">"Enter char: "</span>)
+    <span class="k">if</span> x == <span class="s">'A'</span>: <span class="f">print</span>(<span class="s">"A"</span>)
+    <span class="k">elif</span> x == <span class="s">'B'</span>: <span class="f">print</span>(<span class="s">"B"</span>)
+    <span class="k">else</span>:
+        <span class="f">print</span>(<span class="s">"Wrong char"</span>)
+        <span class="k">break</span>   <span class="c"># لازم break أو الشرط يبقى False عشان توقف</span></pre>
+      </div>
+      <div class="note"><b>خطر شائع:</b> <code>while True</code> من غير <code>break</code> جواها = حلقة لا نهائية بتعلّق البرنامج.</div>
+    </section>
+
+    <!-- 09 TRY EXCEPT -->
+    <section class="topic" id="try-except">
+      <div class="kicker"><span class="idx">09</span></div>
+      <h2>Try / Except — التعامل مع الأخطاء</h2>
+      <p class="lead">بنحط الكود اللي ممكن يسبب خطأ جوه <code>try</code>، ولو حصل خطأ بينفذ اللي جوه <code>except</code> بدل ما البرنامج يقف فجأة.</p>
+      <div class="grid2">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>generic_except.py</span></div>
+          <pre><span class="k">try</span>:
+    age = <span class="f">int</span>(<span class="f">input</span>(<span class="s">"Please enter your age: "</span>))
+<span class="k">except</span>:
+    <span class="f">print</span>(<span class="s">"Please enter your age in number"</span>)
+<span class="f">print</span>(<span class="s">"s2"</span>)</pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>specific_except.py</span></div>
+          <pre><span class="k">try</span>:
+    <span class="f">print</span>(10/0)
+<span class="k">except</span> ZeroDivisionError:
+    <span class="f">print</span>(<span class="s">"ZeroDivisionError"</span>)
+
+<span class="k">try</span>:
+    d = {<span class="s">'key'</span>:<span class="s">'value'</span>}
+    <span class="f">print</span>(d[<span class="s">'key2'</span>])
+<span class="k">except</span> KeyError:
+    <span class="f">print</span>(<span class="s">"KeyError"</span>)</pre>
+        </div>
+      </div>
+      <div class="grid2" style="margin-top:16px;">
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>exception_as_e.py</span></div>
+          <pre><span class="k">try</span>:
+    <span class="f">print</span>(10/0)
+<span class="k">except</span> Exception <span class="k">as</span> e:
+    <span class="f">print</span>(<span class="s">"Error"</span>, e)
+<span class="c"># Error division by zero</span></pre>
+        </div>
+        <div class="code-card">
+          <div class="bar"><i></i><i></i><i></i><span>else_finally.py</span></div>
+          <pre><span class="k">try</span>:
+    d = {<span class="s">'key'</span>:<span class="s">'value'</span>}
+    <span class="f">print</span>(d[<span class="s">'key'</span>])
+<span class="k">except</span>:
+    <span class="f">print</span>(<span class="s">"Error"</span>)
+<span class="k">else</span>:          <span class="c"># لو مفيش خطأ</span>
+    <span class="f">print</span>(<span class="s">"No Error"</span>)
+<span class="k">finally</span>:        <span class="c"># بتتنفذ دايمًا</span>
+    <span class="f">print</span>(<span class="s">"End"</span>)</pre>
+        </div>
+      </div>
+      <div class="note"><b>الفرق:</b> <code>except:</code> يمسك أي خطأ. <code>except ValueError:</code> يمسك نوع محدد بس. <code>except Exception as e:</code> يمسك أي خطأ ويسيبك تشوف رسالته.</div>
+    </section>
+
+    <!-- QUIZ -->
+    <section id="quiz">
+      <div class="kicker"><span class="idx">🧠</span></div>
+      <h2>اختبر نفسك</h2>
+      <p class="lead">10 أسئلة على كل المحاضرة — اختار إجابة وهيبان لك صح ولا غلط مع شرح سريع.</p>
+
+      <div class="quiz-summary">
+        <div>النتيجة</div>
+        <div class="score"><span id="scoreVal">0</span> / <span id="scoreTotal">10</span></div>
+        <button class="reset-btn" onclick="resetQuiz()">إعادة المحاولة</button>
+      </div>
+
+      <div id="quizList"></div>
+    </section>
+
+    <footer>Session 3 · Python for-loops &amp; exceptions — مرجع مذاكرة للطلاب</footer>
+  </main>
+</div>
+
+<script>
+// active nav on scroll
+const links = document.querySelectorAll('#topnav a[href^="#"]');
+const sections = [...document.querySelectorAll('section.topic, #quiz')];
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      links.forEach(l=>l.classList.remove('active'));
+      const match = document.querySelector(`#topnav a[href="#${e.target.id}"]`);
+      if(match) match.classList.add('active');
+    }
+  });
+},{rootMargin:'-20% 0px -70% 0px'});
+sections.forEach(s=>io.observe(s));
+
+// ===== quiz =====
+const QUESTIONS = [
+  {q:"إيه ناتج range(1,13) لو طبعناه كـ list؟", opts:["أرقام من 1 لحد 13 شاملة","أرقام من 1 لحد 12 شاملة","أرقام من 0 لحد 12","أرقام من 1 لحد 13 بخطوة 2"], a:1, ex:"range(start, stop) بتوقف قبل قيمة stop، يعني آخر رقم فعلي هو 12."},
+  {q:"إيه الفرق بين break و continue؟", opts:["مفيش فرق","break يوقف الحلقة كلها، continue يتخطى العنصر الحالي بس","continue يوقف الحلقة، break يتخطى عنصر","الاتنين بيوقفوا الحلقة"], a:1, ex:"break ينهي الحلقة تمامًا، continue يقفز للتكرار (iteration) اللي بعده."},
+  {q:"[i*2 for i in [4,5,6,7,8]] هتطبع إيه؟", opts:["[4,5,6,7,8]","[8,10,12,14,16]","[2,2.5,3,3.5,4]","خطأ في الكود"], a:1, ex:"list comprehension بتضرب كل عنصر في 2: 4*2=8 ... 8*2=16."},
+  {q:"لو عايز تجيب index وقيمة العنصر مع بعض في نفس الوقت، تستخدم إيه؟", opts:["range()","enumerate()","len()","zip() بس"], a:1, ex:"enumerate(lst) بترجع أزواج (index, value) لكل عنصر."},
+  {q:"إيه ناتج d.items() لو d = {0:2, 1:3}؟", opts:["dict_keys([0,1])","dict_values([2,3])","dict_items([(0,2),(1,3)])","[0,1,2,3]"], a:2, ex:"items() بترجع كل زوج (key, value) في شكل tuple."},
+  {q:"إيه اللي لازم يكون موجود جوه while True عشان الحلقة متفضلش شغالة للأبد؟", opts:["print()","break أو تغيير للشرط لـ False","continue","pass"], a:1, ex:"لازم حاجة توقف الحلقة، زي break أو تغيير الشرط، وإلا هتبقى infinite loop."},
+  {q:"except Exception as e: بتعمل إيه بالظبط؟", opts:["بتمسك ZeroDivisionError بس","بتمسك أي نوع خطأ وتحطه في المتغير e عشان تطبع رسالته","بتوقف البرنامج فورًا","مش هتشتغل غير جوه while"], a:1, ex:"Exception هو الكلاس الأب لمعظم الأخطاء، فبتمسك أي حاجة وتديك رسالتها في e."},
+  {q:"إيه الفرق بين else و finally في try/except؟", opts:["مفيش فرق خالص","else بتتنفذ لو مفيش خطأ، finally بتتنفذ دايمًا","finally بتتنفذ لو مفيش خطأ بس","else بتتنفذ دايمًا"], a:1, ex:"else تشتغل فقط لو الكود جوه try نجح من غير أخطاء، finally تشتغل في كل الحالات."},
+  {q:"pass جوه for loop أو function معناها إيه؟", opts:["توقف الكود","تعمل خطأ", "أمر فارغ placeholder، البرنامج يكمل عادي من غيره يعمل حاجة", "زي continue بالظبط"], a:2, ex:"pass بتستخدم كـ placeholder لما تحتاج تكتب block لكن لسه مش عايز تنفذ حاجة فيه."},
+  {q:"عايز تجمع مصفوفتين (matrices) عنصر مقابل عنصره بأسرع طريقة، تستخدم:", opts:["حلقة for عادية بس", "حلقتين for متداخلتين يدويًا فقط", "numpy: m + w", "list comprehension من غير حلقة"], a:2, ex:"numpy بتعمل عملية الجمع element-wise بسطر واحد m + w بدل حلقتين متداخلتين يدويًا."}
+];
+
+const list = document.getElementById('quizList');
+let answered = new Array(QUESTIONS.length).fill(false);
+let score = 0;
+
+function render(){
+  list.innerHTML = '';
+  QUESTIONS.forEach((item, qi)=>{
+    const card = document.createElement('div');
+    card.className = 'qcard';
+    card.innerHTML = `
+      <div class="qtext">${qi+1}. ${item.q}</div>
+      <div class="opts">
+        ${item.opts.map((o,oi)=>`<button class="opt" data-q="${qi}" data-o="${oi}">${o}</button>`).join('')}
+      </div>
+      <div class="explain" id="ex-${qi}">💡 ${item.ex}</div>
+    `;
+    list.appendChild(card);
+  });
+  document.querySelectorAll('.opt').forEach(btn=>{
+    btn.addEventListener('click', onAnswer);
+  });
+  document.getElementById('scoreTotal').textContent = QUESTIONS.length;
+}
+
+function onAnswer(e){
+  const qi = +e.target.dataset.q;
+  const oi = +e.target.dataset.o;
+  if(answered[qi]) return;
+  answered[qi] = true;
+  const item = QUESTIONS[qi];
+  const opts = document.querySelectorAll(`.opt[data-q="${qi}"]`);
+  opts.forEach(b=>b.disabled = true);
+  if(oi === item.a){
+    e.target.classList.add('correct');
+    score++;
+  } else {
+    e.target.classList.add('wrong');
+    opts[item.a].classList.add('correct');
+  }
+  document.getElementById(`ex-${qi}`).style.display = 'block';
+  document.getElementById('scoreVal').textContent = score;
+}
+
+function resetQuiz(){
+  answered = new Array(QUESTIONS.length).fill(false);
+  score = 0;
+  document.getElementById('scoreVal').textContent = 0;
+  render();
+}
+
+render();
+</script>
+</body>
+</html>
