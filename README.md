@@ -1,9 +1,21 @@
 # DEPI Data Science  🚀
 
+![Status](https://img.shields.io/badge/Status-In_Progress-yellow?style=for-the-badge)
+
 This repository documents my learning journey through the **Digital Egypt Pioneers Initiative (DEPI)** — Data Science & AI track. It includes session notes, exercises, and hands-on material covering Python, SQL, Data Science theory, soft skills, and business English.
 
 I'm a Computer Science student at Zagazig University, also active in the ICPC community, and this repo is where I track and share my progress as I build my skills in data science and AI.
 
+
+## 📑 Table of Contents
+
+- [Repository Structure](#repository-structure)
+- [Explanation Resources](#explanation-resources)
+- [Contents](#contents)
+- [Tools & Technologies](#tools-technologies)
+- [About Me](#about-me)
+
+<a id="repository-structure"></a>
 ## 📂 Repository Structure
 
 ```
@@ -43,6 +55,29 @@ depi-data-science-ai/
     └── session-04-negotiation-skills.pdf
 ```
 
+
+<a id="explanation-resources"></a>
+## 🎥 Explanation Resources
+
+### Python
+- Learn Python `Arabic ` : [Playlist Link](https://youtube.com/playlist?list=PLDoPjvoNmBAyE_gei5d18qkfIe-Z8mocs)
+- Learn Python `Arabic ` : [Playlist Link](https://youtube.com/playlist?list=PLuXY3ddo_8nzrO74UeZQVZOb5-wIS6krJ)
+- Learn Python `English` : [Video Link](https://youtu.be/Rq5gJVxz55Q)
+
+### SQL
+- Learn SQL `Arabic ` : [Playlist Link](https://youtube.com/playlist?list=PL1DUmTEdeA6J6oDLTveTt4Z7E5qEfFluE)
+- Learn SQL `Arabic ` : [Video Link](https://youtu.be/kb-_GbpH3sQ)
+- Learn SQL `English` : [Playlist Link](https://youtube.com/playlist?list=PLNcg_FV9n7qZY_2eAtUzEUulNjTJREhQe)
+
+
+## 🧭 How to Use This Repo
+
+Each track has its own folder with session-by-session materials.
+Check the [Contents](#contents) table below for topics and file links,
+or the [Explanation Resources](#explanation-resources) section above for video walkthroughs in Arabic or English.
+
+
+<a id="contents"></a>
 ## 📚 Contents
 
 ### Technical
@@ -92,7 +127,7 @@ depi-data-science-ai/
 |---|---|---|
 | 1 | Bio Writing | [session-01-bio-writing.pdf](english-business/session-01-bio-writing.pdf) |
 | 2 | Proposal Writing | [session-02-proposal-writing.pdf](english-business/session-02-proposal-writing.pdf) |
-| 3 | Project Documentation Writing  | [session-03-documentation.pdf](english-business/session-03-documentation.pdf) |
+| 3 | Project Documentation Writing | [session-03-documentation.pdf](english-business/session-03-documentation.pdf) |
 
 
 
@@ -104,6 +139,8 @@ depi-data-science-ai/
 | 3 | Budgeting Pricing Proposals | [session-03-budgeting-pricing-proposals.pdf](freelance/session-03-budgeting-pricing-proposals.pdf) |
 | 4 | Negotiation Skills | [session-04-negotiation-skills.pdf](freelance/session-04-negotiation-skills.pdf) | 
 
+
+<a id="tools-technologies"></a>
 ## 🛠️ Tools & Technologies
 
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
@@ -114,10 +151,13 @@ depi-data-science-ai/
 ![Git](https://img.shields.io/badge/Git-F05032?style=for-the-badge&logo=git&logoColor=white)
 ![GitHub](https://img.shields.io/badge/GitHub-181717?style=for-the-badge&logo=github&logoColor=white)
 
+
 ## 📈 Progress
 
 This repo is updated regularly as I complete new sessions in the program — each commit reflects a new session or topic added.
 
+
+<a id="about-me"></a>
 ## 👤 About Me
 
 **Mohamed Mahmoud Salama**
