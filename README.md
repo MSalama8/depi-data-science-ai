@@ -1,6 +1,6 @@
 # DEPI Data Science  🚀
 
-![Status](https://img.shields.io/badge/Status-In_Progress-yellow?style=for-the-badge)
+![Status](https://img.shields.io/badge/Status-Active-brightgreen?style=for-the-badge)
 
 This repository documents my learning journey through the **Digital Egypt Pioneers Initiative (DEPI)** — Data Science & AI track. It includes session notes, exercises, and hands-on material covering Python, SQL, Data Science theory, soft skills, and business English.
 
